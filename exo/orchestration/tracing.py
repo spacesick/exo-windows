@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import time
 from threading import Lock
 
+
 @dataclass
 class TraceContext:
   request_id: str
@@ -18,13 +19,14 @@ class TraceContext:
   token_group_size: int = 10  # Default group size
   request_span: Optional[trace.Span] = None  # Track the main request span
 
+
 class Tracer:
   def __init__(self):
     self.tracer = trace.get_tracer("exo")
     self.contexts: Dict[str, TraceContext] = {}
     self._lock = Lock()
     self.propagator = TraceContextTextMapPropagator()
-    
+
   def get_context(self, request_id: str) -> Optional[TraceContext]:
     with self._lock:
       return self.contexts.get(request_id)
@@ -52,50 +54,32 @@ class Tracer:
     parent_ctx = self.extract_context(trace_parent)
     if parent_ctx:
       # Create a new request span that links to the parent context
-      request_span = self.tracer.start_span(
-        "request",
-        context=parent_ctx,
-        attributes={
-          "request_id": request_id,
-          "sequence_number": sequence_number
-        }
-      )
-      return TraceContext(
-        request_id=request_id,
-        sequence_number=sequence_number,
-        request_span=request_span,
-        current_span=request_span,
-        trace_parent=trace_parent
-      )
+      request_span = self.tracer.start_span("request", context=parent_ctx, attributes={"request_id": request_id, "sequence_number": sequence_number})
+      return TraceContext(request_id=request_id, sequence_number=sequence_number, request_span=request_span, current_span=request_span, trace_parent=trace_parent)
     return TraceContext(request_id=request_id, sequence_number=sequence_number)
 
   def handle_token(self, context: TraceContext, token: int, is_finished: bool = False):
     """Handle token generation and manage token group spans"""
     context.token_count += 1
-    
+
     # Start a new token group span if needed
     if not context.token_group_span and context.request_span:
       group_number = (context.token_count - 1) // context.token_group_size + 1
-      
+
       # Create token group span as child of request span
       parent_ctx = trace.set_span_in_context(context.request_span)
       context.token_group_span = self.tracer.start_span(
         f"token_group_{group_number}",
         context=parent_ctx,
-        attributes={
-          "request_id": context.request_id,
-          "group.number": group_number,
-          "group.start_token": context.token_count,
-          "group.max_tokens": context.token_group_size
-        }
+        attributes={"request_id": context.request_id, "group.number": group_number, "group.start_token": context.token_count, "group.max_tokens": context.token_group_size}
       )
-    
+
     # Add token to current group span
     if context.token_group_span:
       relative_pos = ((context.token_count - 1) % context.token_group_size) + 1
       context.token_group_span.set_attribute(f"token.{relative_pos}", token)
       context.token_group_span.set_attribute("token.count", relative_pos)
-      
+
       # End current group span if we've reached the group size or if generation is finished
       if context.token_count % context.token_group_size == 0 or is_finished:
         context.token_group_span.set_attribute("token.final_count", relative_pos)
@@ -105,13 +89,10 @@ class Tracer:
   @contextmanager
   def start_span(self, name: str, context: TraceContext, extra_attributes: Optional[Dict[str, Any]] = None):
     """Start a new span with proper parent context"""
-    attributes = {
-      "request_id": context.request_id,
-      "sequence_number": context.sequence_number
-    }
+    attributes = {"request_id": context.request_id, "sequence_number": context.sequence_number}
     if extra_attributes:
       attributes.update(extra_attributes)
-      
+
     # Use request span as parent if available
     parent_ctx = None
     if context.request_span:
@@ -120,35 +101,21 @@ class Tracer:
       parent_ctx = self.extract_context(context.trace_parent)
       if parent_ctx and not context.request_span:
         # Create a new request span that links to the parent context
-        context.request_span = self.tracer.start_span(
-          "request",
-          context=parent_ctx,
-          attributes={
-            "request_id": context.request_id,
-            "sequence_number": context.sequence_number
-          }
-        )
+        context.request_span = self.tracer.start_span("request", context=parent_ctx, attributes={"request_id": context.request_id, "sequence_number": context.sequence_number})
         parent_ctx = trace.set_span_in_context(context.request_span)
     elif context.current_span:
       parent_ctx = trace.set_span_in_context(context.current_span)
-    
+
     # Create span with parent context if it exists
     if parent_ctx:
-      span = self.tracer.start_span(
-        name,
-        context=parent_ctx,
-        attributes=attributes
-      )
+      span = self.tracer.start_span(name, context=parent_ctx, attributes=attributes)
     else:
-      span = self.tracer.start_span(
-        name,
-        attributes=attributes
-      )
-    
+      span = self.tracer.start_span(name, attributes=attributes)
+
     # Update context with current span
     prev_span = context.current_span
     context.current_span = span
-    
+
     try:
       start_time = time.perf_counter()
       yield span
@@ -162,5 +129,6 @@ class Tracer:
       span.end()
       context.current_span = prev_span
 
+
 # Global tracer instance
-tracer = Tracer() 
+tracer = Tracer()

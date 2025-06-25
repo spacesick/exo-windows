@@ -28,7 +28,8 @@ install_requires = [
   "tqdm==4.66.4",
   "transformers==4.50.0",
   "uuid==1.30",
-  "uvloop==0.21.0",
+  "uvloop==0.21.0; sys_platform != 'win32'",
+  "winloop; sys_platform == 'win32'",
   "tinygrad @ git+https://github.com/tinygrad/tinygrad.git@ec120ce6b9ce8e4ff4b5692566a683ef240e8bc8",
   "llguidance==0.6.28",
 ]

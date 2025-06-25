@@ -9,6 +9,7 @@ from mlx_lm.models.qwen2 import TransformerBlock, ModelArgs
 from ...shard import Shard
 from .base import IdentityBlock
 
+
 @dataclass
 class ModelArgs(ModelArgs):
   shard: Shard = field(default_factory=lambda: Shard("", 0, 0, 0))
@@ -22,6 +23,7 @@ class ModelArgs(ModelArgs):
       raise TypeError(f"Expected shard to be a Shard instance or a dict, got {type(self.shard)} instead")
 
     self.shard = Shard(**self.shard)
+
 
 class Qwen2Model(nn.Module):
   def __init__(self, args: ModelArgs):

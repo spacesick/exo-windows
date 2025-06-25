@@ -61,7 +61,10 @@ def build_transformer(model_path: Path, shard: Shard, model_size="8B", device=No
 
   return model
 
-_executor = ThreadPoolExecutor(max_workers=1) # singleton so tinygrad always runs on the same thread
+
+_executor = ThreadPoolExecutor(max_workers=1)  # singleton so tinygrad always runs on the same thread
+
+
 class TinygradDynamicShardInferenceEngine(InferenceEngine):
   def __init__(self, shard_downloader: ShardDownloader):
     self.shard = None
@@ -108,6 +111,7 @@ class TinygradDynamicShardInferenceEngine(InferenceEngine):
 
   async def infer_tensor(self, request_id: str, shard: Shard, input_data: np.ndarray, inference_state: Optional[dict] = None) -> tuple[np.ndarray, Optional[dict]]:
     await self.ensure_shard(shard)
+
     def wrap_infer():
       x = Tensor(input_data)
       h = self.model.embed(x)
@@ -115,6 +119,7 @@ class TinygradDynamicShardInferenceEngine(InferenceEngine):
       out = self.model.forward(h, **state)
       self.states[request_id].start += x.shape[1]
       return out.numpy()
+
     output_data = await asyncio.get_running_loop().run_in_executor(self.executor, wrap_infer)
     return output_data, inference_state
 
@@ -122,6 +127,7 @@ class TinygradDynamicShardInferenceEngine(InferenceEngine):
     def step(x, y, l):
       Tensor.training = False
       return self.session['loss'](self.model, x, y, l)
+
     await self.ensure_shard(shard)
     score = await asyncio.get_running_loop().run_in_executor(self.executor, lambda: self.session['jit'](Tensor(inputs), targets, lengths))
     out = score.numpy()
@@ -135,6 +141,7 @@ class TinygradDynamicShardInferenceEngine(InferenceEngine):
       score.backward()
       self.session['opt'].step()
       return score
+
     await self.ensure_shard(shard)
 
     score = await asyncio.get_running_loop().run_in_executor(self.executor, lambda: self.session['jit'](Tensor(inputs), targets, lengths).realize())

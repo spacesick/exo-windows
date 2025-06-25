@@ -126,7 +126,7 @@ class TopologyViz:
           if len(last_line) + 4 <= max_width:
             prompt_lines[-1] = last_line + " ..."
           else:
-            prompt_lines[-1] = last_line[:max_width-4] + " ..."
+            prompt_lines[-1] = last_line[:max_width - 4] + " ..."
 
       prompt_text = Text(f"{prompt_icon} ", style="bold bright_blue")
       prompt_text.append('\n'.join(prompt_lines), style="white")
@@ -161,7 +161,7 @@ class TopologyViz:
             if len(last_line) + 4 <= max_width:
               output_lines[-1] = last_line + " ..."
             else:
-              output_lines[-1] = last_line[:max_width-4] + " ..."
+              output_lines[-1] = last_line[:max_width - 4] + " ..."
 
         output_text = Text(f"{output_icon} ", style="bold bright_magenta")
         output_text.append('\n'.join(output_lines), style="white")
@@ -169,13 +169,7 @@ class TopologyViz:
 
       content.append(Text())  # Empty line between entries
 
-    return Panel(
-      Group(*content),
-      title="",
-      border_style="cyan",
-      height=panel_height,
-      expand=True
-    )
+    return Panel(Group(*content), title="", border_style="cyan", height=panel_height, expand=True)
 
   def _generate_main_layout(self) -> str:
     # Calculate visualization parameters
@@ -318,8 +312,8 @@ class TopologyViz:
           visualization[line_y][line_x] = "-"
 
       # Add connection description near the midpoint of the line
-      mid_x = (x + next_x) // 2
-      mid_y = (y + next_y) // 2
+      mid_x = (x+next_x) // 2
+      mid_y = (y+next_y) // 2
       # Center the description text around the midpoint
       desc_start_x = mid_x - len(connection_description) // 2
       for j, char in enumerate(connection_description):

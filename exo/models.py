@@ -554,6 +554,7 @@ model_cards: ModelCardCollection = {
   ),
 }
 
+
 def get_repo(model_id: str, inference_engine_classname: str) -> Optional[str]:
   model_card = model_cards.get(model_id)
 
@@ -582,20 +583,20 @@ def build_base_shard(model_id: str, inference_engine_classname: str) -> Optional
     return None
   return Shard(model_id, 0, 0, n_layers)
 
+
 def build_full_shard(model_id: str, inference_engine_classname: str) -> Optional[Shard]:
   base_shard = build_base_shard(model_id, inference_engine_classname)
   if base_shard is None: return None
   return Shard(base_shard.model_id, 0, base_shard.n_layers - 1, base_shard.n_layers)
+
 
 def get_supported_models(supported_inference_engine_lists: Optional[List[List[str]]] = None) -> List[str]:
   if not supported_inference_engine_lists:
     return list(model_cards.keys())
 
   from exo.inference.inference_engine import inference_engine_classes
-  supported_inference_engine_lists = [
-    [inference_engine_classes[engine] if engine in inference_engine_classes else engine for engine in engine_list]
-    for engine_list in supported_inference_engine_lists
-  ]
+  supported_inference_engine_lists = [[inference_engine_classes[engine] if engine in inference_engine_classes else engine for engine in engine_list]
+                                      for engine_list in supported_inference_engine_lists]
 
   def has_any_engine(model_info: ModelCard, engine_list: List[str]) -> bool:
     return any(engine in model_info.repo for engine in engine_list)

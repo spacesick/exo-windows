@@ -29,32 +29,51 @@ from exo.inference.inference_engine import get_inference_engine
 from exo.inference.tokenizers import resolve_tokenizer
 from exo.models import build_base_shard, get_repo, load_additional_models
 from exo.viz.topology_viz import TopologyViz
-import uvloop
 import concurrent.futures
-import resource
 import psutil
+import sys  # Needed for platform checks
+
+# Conditionally import resource only on non-Windows platforms.
+if sys.platform not in ('win32', 'cygwin', 'cli'):
+  import resource
+else:
+  resource = None
+
+# Conditionally import the appropriate event loop library:
+if sys.platform in ('win32', 'cygwin', 'cli'):
+  import winloop
+else:
+  import uvloop
 
 # TODO: figure out why this is happening
 os.environ["GRPC_VERBOSITY"] = "error"
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
-# Configure uvloop for maximum performance
-def configure_uvloop():
+
+# Configure the event loop for maximum performance.
+# On Windows, use winloop (uvloop is not supported)
+def configure_event_loop():
+  if sys.platform in ('win32', 'cygwin', 'cli'):
+    winloop.install()
+  else:
     uvloop.install()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Increase file descriptor limits on Unix systems
-    if not psutil.WINDOWS:
+    # Increase file descriptor limits on Unix systems if resource is available
+    if resource is not None and not psutil.WINDOWS:
       soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-      try: resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+      try:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
       except ValueError:
-        try: resource.setrlimit(resource.RLIMIT_NOFILE, (8192, hard))
-        except ValueError: pass
+        try:
+          resource.setrlimit(resource.RLIMIT_NOFILE, (8192, hard))
+        except ValueError:
+          pass
 
-    loop.set_default_executor(concurrent.futures.ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 4)))
-    return loop
+  loop = asyncio.new_event_loop()
+  asyncio.set_event_loop(loop)
+  loop.set_default_executor(concurrent.futures.ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1)*4)))
+  return loop
+
 
 # parse args
 parser = argparse.ArgumentParser(description="Initialize GRPC Discovery")
@@ -197,10 +216,16 @@ def update_topology_viz(req_id, tokens, __, ___):
   if not topology_viz: return
   if not node.inference_engine.shard: return
   if node.inference_engine.shard.model_id == 'stable-diffusion-2-1-base': return
-  if req_id in buffered_token_output: buffered_token_output[req_id].extend(tokens)
-  else: buffered_token_output[req_id] = tokens
+  if req_id in buffered_token_output:
+    buffered_token_output[req_id].extend(tokens)
+  else:
+    buffered_token_output[req_id] = tokens
   topology_viz.update_prompt_output(req_id, node.inference_engine.tokenizer.decode(buffered_token_output[req_id]))
+
+
 node.on_token.register("update_topology_viz").on_next(update_topology_viz)
+
+
 def update_prompt_viz(request_id, opaque_status: str):
   if not topology_viz: return
   try:
@@ -211,7 +236,10 @@ def update_prompt_viz(request_id, opaque_status: str):
     if DEBUG >= 2:
       print(f"Failed to update prompt viz: {e}")
       traceback.print_exc()
+
+
 node.on_opaque_status.register("update_prompt_viz").on_next(update_prompt_viz)
+
 
 def preemptively_load_shard(request_id: str, opaque_status: str):
   try:
@@ -224,9 +252,13 @@ def preemptively_load_shard(request_id: str, opaque_status: str):
     if DEBUG >= 2:
       print(f"Failed to preemptively start download: {e}")
       traceback.print_exc()
+
+
 node.on_opaque_status.register("preemptively_load_shard").on_next(preemptively_load_shard)
 
 last_events: dict[str, tuple[float, RepoProgressEvent]] = {}
+
+
 def throttled_broadcast(shard: Shard, event: RepoProgressEvent):
   global last_events
   current_time = time.time()
@@ -236,7 +268,10 @@ def throttled_broadcast(shard: Shard, event: RepoProgressEvent):
   if last_event and last_event[0] == event.status and current_time - last_event[0] < 0.2: return
   last_events[shard.model_id] = (current_time, event)
   asyncio.create_task(node.broadcast_opaque_status("", json.dumps({"type": "download_progress", "node_id": node.id, "progress": event.to_dict()})))
+
+
 shard_downloader.on_progress.register("broadcast").on_next(throttled_broadcast)
+
 
 async def run_model_cli(node: Node, model_name: str, prompt: str):
   inference_class = node.inference_engine.__class__.__name__
@@ -257,9 +292,11 @@ async def run_model_cli(node: Node, model_name: str, prompt: str):
     await node.process_prompt(shard, prompt, request_id=request_id)
 
     tokens = []
+
     def on_token(_request_id, _tokens, _is_finished):
       tokens.extend(_tokens)
       return _request_id == request_id and _is_finished
+
     await callback.wait(on_token, timeout=300)
 
     print("\nGenerated response:")
@@ -270,28 +307,32 @@ async def run_model_cli(node: Node, model_name: str, prompt: str):
   finally:
     node.on_token.deregister(callback_id)
 
+
 def clean_path(path):
-    """Clean and resolve path"""
-    if path.startswith("Optional("):
-        path = path.strip('Optional("').rstrip('")')
-    return os.path.expanduser(path)
+  """Clean and resolve path"""
+  if path.startswith("Optional("):
+    path = path.strip('Optional("').rstrip('")')
+  return os.path.expanduser(path)
+
 
 async def hold_outstanding(node: Node):
   while node.outstanding_requests:
     await asyncio.sleep(.5)
   return
 
+
 async def run_iter(node: Node, shard: Shard, train: bool, data, batch_size=1):
   losses = []
   tokens = []
   for batch in tqdm(iterate_batches(data, batch_size), total=len(data) // batch_size):
     _, _, lengths = batch
-    losses.append(np.sum(lengths * await node.enqueue_example(shard, *batch, train=train)))
+    losses.append(np.sum(lengths*await node.enqueue_example(shard, *batch, train=train)))
     tokens.append(np.sum(lengths))
   total_tokens = np.sum(tokens)
-  total_loss = np.sum(losses) / total_tokens
+  total_loss = np.sum(losses)/total_tokens
 
   return total_loss, total_tokens
+
 
 async def eval_model_cli(node: Node, model_name, dataloader, batch_size, num_batches=-1):
   inference_class = node.inference_engine.__class__.__name__
@@ -306,6 +347,7 @@ async def eval_model_cli(node: Node, model_name, dataloader, batch_size, num_bat
   print(f"total | {loss=}, {tokens=}")
   print("Waiting for outstanding tasks")
   await hold_outstanding(node)
+
 
 async def train_model_cli(node: Node, model_name, dataloader, batch_size, iters, save_interval=0, checkpoint_dir=None):
   inference_class = node.inference_engine.__class__.__name__
@@ -326,25 +368,31 @@ async def train_model_cli(node: Node, model_name, dataloader, batch_size, iters,
       await hold_outstanding(node)
   await hold_outstanding(node)
 
+
 async def check_exo_home():
   home, has_read, has_write = await ensure_exo_home(), await has_exo_home_read_access(), await has_exo_home_write_access()
   if DEBUG >= 1: print(f"exo home directory: {home}")
   print(f"{has_read=}, {has_write=}")
   if not has_read or not has_write:
-    print(f"""
-          WARNING: Limited permissions for exo home directory: {home}.
-          This may prevent model downloads from working correctly.
-          {"❌ No read access" if not has_read else ""}
-          {"❌ No write access" if not has_write else ""}
-          """)
+    print(
+      f"""
+        WARNING: Limited permissions for exo home directory: {home}.
+        This may prevent model downloads from working correctly.
+        {"❌ No read access" if not has_read else ""}
+        {"❌ No write access" if not has_write else ""}
+        """
+    )
+
 
 async def main():
   loop = asyncio.get_running_loop()
 
-  try: await check_exo_home()
-  except Exception as e: print(f"Error checking exo home directory: {e}")
+  try:
+    await check_exo_home()
+  except Exception as e:
+    print(f"Error checking exo home directory: {e}")
 
-  if not args.models_seed_dir is None:
+  if args.models_seed_dir is not None:
     try:
       models_seed_dir = clean_path(args.models_seed_dir)
       await seed_models(models_seed_dir)
@@ -353,7 +401,7 @@ async def main():
 
   def restore_cursor():
     if platform.system() != "Windows":
-        os.system("tput cnorm")  # Show cursor
+      os.system("tput cnorm")  # Show cursor
 
   # Restore the cursor when the program exits
   atexit.register(restore_cursor)
@@ -376,8 +424,7 @@ async def main():
     await run_model_cli(node, model_name, args.prompt)
   elif args.command == "eval" or args.command == 'train':
     model_name = args.model_name
-    dataloader = lambda tok: load_dataset(args.data, preprocess=lambda item: tok(item)
-                                                   , loadline=lambda line: json.loads(line).get("text",""))
+    dataloader = lambda tok: load_dataset(args.data, preprocess=lambda item: tok(item), loadline=lambda line: json.loads(line).get("text", ""))
     if args.command == 'eval':
       if not model_name:
         print("Error: Much like a human, I can't evaluate anything without a model")
@@ -388,7 +435,6 @@ async def main():
         print("Error: This train ain't leaving the station without a model")
         return
       await train_model_cli(node, model_name, dataloader, args.batch_size, args.iters, save_interval=args.save_every, checkpoint_dir=args.save_checkpoint_dir)
-
   else:
     asyncio.create_task(api.run(port=args.chatgpt_api_port))  # Start the API server as a non-blocking task
     await asyncio.Event().wait()
@@ -398,15 +444,18 @@ async def main():
     for i in tqdm(range(50)):
       await asyncio.sleep(.1)
 
+
 def run():
-    loop = None
-    try:
-        loop = configure_uvloop()
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        print("\nShutdown requested... exiting")
-    finally:
-        if loop: loop.close()
+  loop = None
+  try:
+    loop = configure_event_loop()
+    loop.run_until_complete(main())
+  except KeyboardInterrupt:
+    print("\nShutdown requested... exiting")
+  finally:
+    if loop:
+      loop.close()
+
 
 if __name__ == "__main__":
   run()

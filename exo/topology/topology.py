@@ -2,6 +2,7 @@ from .device_capabilities import DeviceCapabilities
 from typing import Dict, Set, Optional
 from dataclasses import dataclass
 
+
 @dataclass
 class PeerConnection:
   from_id: str
@@ -17,6 +18,7 @@ class PeerConnection:
       return False
     # Compare both from_id and to_id for equality
     return self.from_id == other.from_id and self.to_id == other.to_id
+
 
 class Topology:
   def __init__(self):
@@ -50,26 +52,13 @@ class Topology:
 
   def __str__(self):
     nodes_str = ", ".join(f"{node_id}: {cap}" for node_id, cap in self.nodes.items())
-    edges_str = ", ".join(f"{node}: {[f'{c.to_id}({c.description})' for c in conns]}"
-                         for node, conns in self.peer_graph.items())
+    edges_str = ", ".join(f"{node}: {[f'{c.to_id}({c.description})' for c in conns]}" for node, conns in self.peer_graph.items())
     return f"Topology(Nodes: {{{nodes_str}}}, Edges: {{{edges_str}}})"
 
   def to_json(self):
     return {
-      "nodes": {
-        node_id: capabilities.to_dict()
-        for node_id, capabilities in self.nodes.items()
-      },
-      "peer_graph": {
-        node_id: [
-          {
-            "from_id": conn.from_id,
-            "to_id": conn.to_id,
-            "description": conn.description
-          }
-          for conn in connections
-        ]
-        for node_id, connections in self.peer_graph.items()
-      },
-      "active_node_id": self.active_node_id
+      "nodes": {node_id: capabilities.to_dict()
+                for node_id, capabilities in self.nodes.items()},
+      "peer_graph": {node_id: [{"from_id": conn.from_id, "to_id": conn.to_id, "description": conn.description} for conn in connections]
+                     for node_id, connections in self.peer_graph.items()}, "active_node_id": self.active_node_id
     }

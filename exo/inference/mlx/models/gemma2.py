@@ -48,7 +48,7 @@ class GemmaModel(nn.Module):
   ):
     if self.args.shard.is_first_layer():
       h = self.embed_tokens(inputs)
-      h = h * (self.args.hidden_size**0.5)
+      h = h*(self.args.hidden_size**0.5)
     else:
       h = inputs
 
@@ -84,8 +84,8 @@ class Model(nn.Module):
     out = self.model(inputs, cache)
     if self.args.shard.is_last_layer():
       out = self.model.embed_tokens.as_linear(out)
-      out = mx.tanh(out / self.final_logit_softcapping)
-      out = out * self.final_logit_softcapping
+      out = mx.tanh(out/self.final_logit_softcapping)
+      out = out*self.final_logit_softcapping
     return out
 
   def sanitize(self, weights):

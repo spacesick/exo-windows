@@ -385,7 +385,7 @@ class Node:
           self.outstanding_requests[request_id] = "preprocessing"
           step, _ = await self.inference_engine.infer_tensor(request_id, shard, example)
           self.outstanding_requests[request_id] = "waiting"
-          loss, backgrad = await self.forward_example(shard, step, target, length, train, request_id, self.get_partition_index(offset = 1))
+          loss, backgrad = await self.forward_example(shard, step, target, length, train, request_id, self.get_partition_index(offset=1))
           self.outstanding_requests[request_id] = "training"
           partial_loss, grad = await self.inference_engine.train(request_id, shard, example, backgrad, length, loss="back_gradient")
         self.outstanding_requests.pop(request_id)
@@ -401,7 +401,7 @@ class Node:
           self.outstanding_requests[request_id] = "preprocessing"
           step, _ = await self.inference_engine.infer_tensor(request_id, shard, example)
           self.outstanding_requests[request_id] = "waiting"
-          loss = await self.forward_example(shard, step, target, length, train, request_id, self.get_partition_index(offset = 1))
+          loss = await self.forward_example(shard, step, target, length, train, request_id, self.get_partition_index(offset=1))
         self.outstanding_requests.pop(request_id)
         return loss
     except Exception as e:
@@ -520,7 +520,7 @@ class Node:
     current_partition_index = next((i for i, p in enumerate(partitions) if p.node_id == self.id), None)
     if current_partition_index is None:
       raise ValueError(f"No current partition found for node: {self.id}")
-    return (current_partition_index + offset) % len(partitions)
+    return (current_partition_index+offset) % len(partitions)
 
   def get_current_shard(self, base_shard: Shard, index: Optional[int] = None) -> Shard:
     if index is None:
@@ -682,8 +682,8 @@ class Node:
 
   def handle_stable_diffusion(self, inference_state, result):
     if inference_state['is_step_finished']:
-      inference_state['step']+=1
-    progress = [inference_state['step'],inference_state['total_steps']]
+      inference_state['step'] += 1
+    progress = [inference_state['step'], inference_state['total_steps']]
     intermediate_result = result
     if progress[0] == progress[1]:
       intermediate_result = result

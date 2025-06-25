@@ -2,6 +2,7 @@ from exo.download.new_shard_download import NewShardDownloader
 from exo.inference.shard import Shard
 import asyncio
 
+
 async def test_new_shard_download():
   shard_downloader = NewShardDownloader()
   shard_downloader.on_progress.register("test").on_next(lambda shard, event: print(shard, event))
@@ -9,6 +10,6 @@ async def test_new_shard_download():
   async for path, shard_status in shard_downloader.get_shard_download_status("MLXDynamicShardInferenceEngine"):
     print("Shard download status:", path, shard_status)
 
+
 if __name__ == "__main__":
   asyncio.run(test_new_shard_download())
-
