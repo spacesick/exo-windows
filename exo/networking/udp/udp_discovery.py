@@ -121,16 +121,14 @@ class UDPDiscovery(Discovery):
           except AttributeError:
             pass
           sock.bind((addr, 0))
-          
-          transport, _ = await asyncio.get_event_loop().create_datagram_endpoint(
-            lambda: BroadcastProtocol(message, self.broadcast_port, addr),
-            sock=sock
-          )
+
+          transport, _ = await asyncio.get_event_loop().create_datagram_endpoint(lambda: BroadcastProtocol(message, self.broadcast_port, addr), sock=sock)
         except Exception as e:
           print(f"Error in broadcast presence ({addr} - {interface_name} - {interface_priority}): {e}")
         finally:
           if transport:
-            try: transport.close()
+            try:
+              transport.close()
             except Exception as e:
               if DEBUG_DISCOVERY >= 2: print(f"Error closing transport: {e}")
 
@@ -158,7 +156,7 @@ class UDPDiscovery(Discovery):
 
     if message["type"] == "discovery" and message["node_id"] != self.node_id:
       peer_id = message["node_id"]
-      
+
       # Skip if peer_id is not in allowed list
       if self.allowed_node_ids and peer_id not in self.allowed_node_ids:
         if DEBUG_DISCOVERY >= 2: print(f"Ignoring peer {peer_id} as it's not in the allowed node IDs list")

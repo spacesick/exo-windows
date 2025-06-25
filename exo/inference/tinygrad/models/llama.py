@@ -48,6 +48,7 @@ def repeat_kv(x: Tensor, n_rep: int) -> Tensor:
   # NOTE: this is different from x.repeat((1, 1, n_rep, 1))
   return x.repeat((1, 1, 1, n_rep)).reshape(bs, seqlen, n_kv_heads*n_rep, head_dim)
 
+
 class Attention:
   def __init__(self, dim, n_heads, n_kv_heads, max_context, linear=nn.Linear):
     self.n_heads = n_heads
@@ -61,7 +62,7 @@ class Attention:
     self.wv = linear(dim, self.n_kv_heads*self.head_dim, bias=False)
     self.wo = linear(self.n_heads*self.head_dim, dim, bias=False)
 
-  def __call__(self, x: Tensor, start_pos: Union[Variable, int], freqs_cis: Tensor, mask: Optional[Tensor], cache: Optional[Tensor]=None) -> Tensor:
+  def __call__(self, x: Tensor, start_pos: Union[Variable, int], freqs_cis: Tensor, mask: Optional[Tensor], cache: Optional[Tensor] = None) -> Tensor:
     if getenv("WQKV"):
       if not hasattr(self, 'wqkv'): self.wqkv = Tensor.cat(self.wq.weight, self.wk.weight, self.wv.weight)
       xqkv = x @ self.wqkv.T
@@ -111,7 +112,7 @@ class TransformerBlock:
     self.attention_norm = nn.RMSNorm(dim, norm_eps)
     self.ffn_norm = nn.RMSNorm(dim, norm_eps)
 
-  def __call__(self, x: Tensor, start_pos: Union[Variable, int], freqs_cis: Tensor, mask: Optional[Tensor], cache: Optional[Tensor]=None):
+  def __call__(self, x: Tensor, start_pos: Union[Variable, int], freqs_cis: Tensor, mask: Optional[Tensor], cache: Optional[Tensor] = None):
     h = x + self.attention(self.attention_norm(x), start_pos, freqs_cis, mask, cache=cache)
     return (h + self.feed_forward(self.ffn_norm(h))).contiguous()
 
@@ -207,7 +208,7 @@ class Transformer:
     h = x
 
     if cache is None:
-      cache = [None for _ in range(self.shard.start_layer, self.shard.end_layer + 1)]  
+      cache = [None for _ in range(self.shard.start_layer, self.shard.end_layer + 1)]
     for i, c in zip(range(self.shard.start_layer, self.shard.end_layer + 1), cache):
       layer = self.layers[i]
       h = layer(h, start_pos, freqs_cis, mask, cache=c)
@@ -235,6 +236,7 @@ class Transformer:
     h = self.embed(x)
     return self.forward(h, start_pos, cache=cache)
 
+
 class TransformerShard:
   def __init__(
     self,
@@ -244,13 +246,13 @@ class TransformerShard:
   ):
     shardrange = range(shard.start_layer, shard.end_layer + 1)
     self.layers = [layer for layer, n in zip(base.layers, range(shard.n_layers)) if n in shardrange]
-    self.norm = base.norm 
+    self.norm = base.norm
     self.tok_embeddings = base.tok_embeddings
     self.embed = (lambda x: self.tok_embeddings(x)) if shard.is_first_layer() else (lambda x: x)
     self.output = base.output
     self.post = (lambda x: self.output(x)) if shard.is_last_layer() else (lambda x: x)
     self.max_context = base.max_context
-    self.null_cache = [None for _ in shardrange] 
+    self.null_cache = [None for _ in shardrange]
     self.freqs_cis = base.freqs_cis
     self.forward_jit = TinyJit(self.forward_base) if jit else None
 
@@ -274,7 +276,8 @@ class TransformerShard:
     # TODO: better way to handle the first call v.s. the rest?
     h = self.embed(x)
     return self.forward(h, start_pos, cache=self.null_cache if cache is None else cache)
-      
+
+
 # *** helpers ***
 
 
@@ -316,10 +319,7 @@ def convert_from_huggingface(weights: Dict[str, Tensor], model: Transformer, n_h
 def fix_bf16(weights: Dict[Any, Tensor]):
   if Device.DEFAULT == "CLANG":
     # TODO: without casting to float16, 70B llama OOM on tinybox.
-    return {
-      k: (v.llvm_bf16_cast(dtypes.float32).to(v.device) if v.dtype == dtypes.bfloat16 else v) 
-      for k, v in weights.items()
-    }
+    return {k: (v.llvm_bf16_cast(dtypes.float32).to(v.device) if v.dtype == dtypes.bfloat16 else v) for k, v in weights.items()}
   if getenv("SUPPORT_BF16", 1):
     # TODO: without casting to float16, 70B llama OOM on tinybox.
     return {k: v.cast(dtypes.float32).cast(dtypes.float16) if v.dtype == dtypes.bfloat16 else v for k, v in weights.items()}

@@ -46,7 +46,7 @@ def load(fn: str, shard: Shard):
     weight_map = safe_load(fn)
     for k in list(weight_map):
       if (n := re.search(r"\.(\d+)\.", k)) and not (shard.start_layer <= int(n.group(1)) <= shard.end_layer):
-          del weight_map[k]
+        del weight_map[k]
     return weight_map
   else:
     return torch_load(fn)

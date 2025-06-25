@@ -9,6 +9,7 @@ from mlx_lm.models.phi3 import TransformerBlock, ModelArgs
 from ...shard import Shard
 from .base import IdentityBlock
 
+
 @dataclass
 class ModelArgs(ModelArgs):
   shard: Shard = field(default_factory=lambda: Shard("", 0, 0, 0))
@@ -23,6 +24,7 @@ class ModelArgs(ModelArgs):
 
     self.shard = Shard(**self.shard)
 
+
 class Phi3Model(nn.Module):
   def __init__(self, args: ModelArgs):
     super().__init__()
@@ -30,17 +32,17 @@ class Phi3Model(nn.Module):
     self.vocab_size = args.vocab_size
     self.num_hidden_layers = args.num_hidden_layers
     assert self.vocab_size > 0
-    
+
     if self.args.shard.is_first_layer():
       self.embed_tokens = nn.Embedding(args.vocab_size, args.hidden_size)
-    
+
     self.layers = []
     for i in range(self.num_hidden_layers):
       if self.args.shard.start_layer <= i <= self.args.shard.end_layer:
         self.layers.append(TransformerBlock(args=args))
       else:
         self.layers.append(IdentityBlock())
-        
+
     if self.args.shard.is_last_layer():
       self.norm = nn.RMSNorm(args.hidden_size, eps=args.rms_norm_eps)
 
@@ -59,7 +61,7 @@ class Phi3Model(nn.Module):
       mask = create_attention_mask(h, cache)
 
     if cache is None:
-      cache = [None] * len(self.layers)
+      cache = [None]*len(self.layers)
 
     for layer, c in zip(self.layers, cache):
       h = layer(h, mask, c)
@@ -67,6 +69,7 @@ class Phi3Model(nn.Module):
     if self.args.shard.is_last_layer():
       h = self.norm(h)
     return h
+
 
 class Model(nn.Module):
   def __init__(self, args: ModelArgs):

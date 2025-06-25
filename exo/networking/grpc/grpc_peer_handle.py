@@ -29,9 +29,9 @@ class GRPCPeerHandle(PeerHandle):
     self.channel = None
     self.stub = None
     self.channel_options = [
-      ("grpc.max_metadata_size", 32 * 1024 * 1024),
-      ("grpc.max_receive_message_length", 256 * 1024 * 1024),
-      ("grpc.max_send_message_length", 256 * 1024 * 1024),
+      ("grpc.max_metadata_size", 32*1024*1024),
+      ("grpc.max_receive_message_length", 256*1024*1024),
+      ("grpc.max_send_message_length", 256*1024*1024),
       ("grpc.max_concurrent_streams", 100),
       ("grpc.http2.min_time_between_pings_ms", 10000),
       ("grpc.keepalive_time_ms", 10000),
@@ -56,11 +56,7 @@ class GRPCPeerHandle(PeerHandle):
     return self._device_capabilities
 
   async def connect(self):
-    self.channel = grpc.aio.insecure_channel(
-      self.address,
-      options=self.channel_options,
-      compression=grpc.Compression.Gzip
-    )
+    self.channel = grpc.aio.insecure_channel(self.address, options=self.channel_options, compression=grpc.Compression.Gzip)
     self.stub = node_service_pb2_grpc.NodeServiceStub(self.channel)
     await asyncio.wait_for(self.channel.channel_ready(), timeout=10.0)
 

@@ -20,7 +20,7 @@ class DummyTokenizer:
     return np.array([1])
 
   def decode(self, tokens):
-    return "dummy" * len(tokens)
+    return "dummy"*len(tokens)
 
 
 async def resolve_tokenizer(repo_id: Union[str, PathLike]):

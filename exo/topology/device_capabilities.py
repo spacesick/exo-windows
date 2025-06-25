@@ -165,13 +165,8 @@ async def device_capabilities() -> DeviceCapabilities:
 
 async def mac_device_capabilities() -> DeviceCapabilities:
   model_id, chip_id, memory = await get_mac_system_info()
-  
-  return DeviceCapabilities(
-    model=model_id,
-    chip=chip_id,
-    memory=memory,
-    flops=CHIP_FLOPS.get(chip_id, DeviceFlops(fp32=0, fp16=0, int8=0))
-  )
+
+  return DeviceCapabilities(model=model_id, chip=chip_id, memory=memory, flops=CHIP_FLOPS.get(chip_id, DeviceFlops(fp32=0, fp16=0, int8=0)))
 
 
 async def linux_device_capabilities() -> DeviceCapabilities:
@@ -223,7 +218,7 @@ async def linux_device_capabilities() -> DeviceCapabilities:
     )
 
 
-def windows_device_capabilities() -> DeviceCapabilities:
+async def windows_device_capabilities() -> DeviceCapabilities:
   import psutil
 
   def get_gpu_info():

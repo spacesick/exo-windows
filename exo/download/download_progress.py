@@ -46,10 +46,10 @@ class RepoProgressEvent:
 
   def to_dict(self):
     return {
-      "shard": self.shard.to_dict(), "repo_id": self.repo_id, "repo_revision": self.repo_revision, "completed_files": self.completed_files, "total_files": self.total_files, "downloaded_bytes": self.downloaded_bytes,
-      "downloaded_bytes_this_session": self.downloaded_bytes_this_session, "total_bytes": self.total_bytes, "overall_speed": self.overall_speed, "overall_eta": self.overall_eta.total_seconds(),
-      "file_progress": {k: v.to_dict()
-                        for k, v in self.file_progress.items()}, "status": self.status
+      "shard": self.shard.to_dict(), "repo_id": self.repo_id, "repo_revision": self.repo_revision, "completed_files": self.completed_files, "total_files": self.total_files,
+      "downloaded_bytes": self.downloaded_bytes, "downloaded_bytes_this_session": self.downloaded_bytes_this_session, "total_bytes": self.total_bytes, "overall_speed": self.overall_speed,
+      "overall_eta": self.overall_eta.total_seconds(), "file_progress": {k: v.to_dict()
+                                                                         for k, v in self.file_progress.items()}, "status": self.status
     }
 
   @classmethod

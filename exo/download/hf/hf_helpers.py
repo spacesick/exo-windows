@@ -11,6 +11,7 @@ import aiofiles
 
 T = TypeVar("T")
 
+
 def filter_repo_objects(
   items: Iterable[T],
   *,
@@ -28,12 +29,14 @@ def filter_repo_objects(
     ignore_patterns = [_add_wildcard_to_directories(p) for p in ignore_patterns]
 
   if key is None:
+
     def _identity(item: T) -> str:
       if isinstance(item, str):
         return item
       if isinstance(item, Path):
         return str(item)
       raise ValueError(f"Please provide `key` argument in `filter_repo_objects`: `{item}` is not a string.")
+
     key = _identity
 
   for item in items:
@@ -44,17 +47,21 @@ def filter_repo_objects(
       continue
     yield item
 
+
 def _add_wildcard_to_directories(pattern: str) -> str:
   if pattern[-1] == "/":
     return pattern + "*"
   return pattern
 
+
 def get_hf_endpoint() -> str:
   return os.environ.get('HF_ENDPOINT', "https://huggingface.co")
+
 
 def get_hf_home() -> Path:
   """Get the Hugging Face home directory."""
   return Path(os.environ.get("HF_HOME", Path.home()/".cache"/"huggingface"))
+
 
 async def get_hf_token():
   """Retrieve the Hugging Face token from the user's HF_HOME directory."""
@@ -64,12 +71,14 @@ async def get_hf_token():
       return (await f.read()).strip()
   return None
 
+
 async def get_auth_headers():
   """Get authentication headers if a token is available."""
   token = await get_hf_token()
   if token:
     return {"Authorization": f"Bearer {token}"}
   return {}
+
 
 def extract_layer_num(tensor_name: str) -> Optional[int]:
   # This is a simple example and might need to be adjusted based on the actual naming convention
@@ -78,6 +87,7 @@ def extract_layer_num(tensor_name: str) -> Optional[int]:
     if part.isdigit():
       return int(part)
   return None
+
 
 def get_allow_patterns(weight_map: Dict[str, str], shard: Shard) -> List[str]:
   default_patterns = set(["*.json", "*.py", "tokenizer.model", "*.tiktoken", "*.txt"])

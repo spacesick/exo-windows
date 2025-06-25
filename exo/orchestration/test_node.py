@@ -7,6 +7,7 @@ from .node import Node
 from exo.networking.peer_handle import PeerHandle
 from exo.download.shard_download import NoopShardDownloader
 
+
 class TestNode(unittest.IsolatedAsyncioTestCase):
   def setUp(self):
     self.mock_inference_engine = AsyncMock()
