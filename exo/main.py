@@ -117,8 +117,8 @@ args = parser.parse_args()
 
 # Handle the --get-device-capabilities option before printing anything else so it can be used for automation
 if args.get_device_capabilities:
-    print(get_device_capabilities_json())
-    exit(0)
+  print(get_device_capabilities_json())
+  exit(0)
 
 print(f"Selected inference engine: {args.inference_engine}")
 
@@ -180,7 +180,9 @@ elif args.discovery_module == "manual":
   # Manual discovery uses a JSON config file that defines all nodes in the network
   # The config file should contain a "peers" object mapping node_ids to their connection details
   # See NetworkTopology class in exo/networking/manual/network_topology_config.py for the expected format
-  discovery = ManualDiscovery(args.discovery_config_path, args.node_id, create_peer_handle=lambda peer_id, address, description, device_capabilities: GRPCPeerHandle(peer_id, address, description, device_capabilities))
+  discovery = ManualDiscovery(
+    args.discovery_config_path, args.node_id, create_peer_handle=lambda peer_id, address, description, device_capabilities: GRPCPeerHandle(peer_id, address, description, device_capabilities)
+  )
 topology_viz = TopologyViz(chatgpt_api_endpoints=chatgpt_api_endpoints, web_chat_urls=web_chat_urls) if not args.disable_tui else None
 
 if args.additional_models is not None:
@@ -212,6 +214,8 @@ api = ChatGPTAPI(
   system_prompt=args.system_prompt
 )
 buffered_token_output = {}
+
+
 def update_topology_viz(req_id, tokens, __, ___):
   if not topology_viz: return
   if not node.inference_engine.shard: return

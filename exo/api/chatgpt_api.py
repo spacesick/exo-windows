@@ -70,8 +70,9 @@ def remap_messages(messages: List[Message]) -> List[Message]:
 
   return remapped_messages
 
+
 def build_prompt(tokenizer, _messages: List[Message], tools: Optional[List[Dict]] = None):
-  messages = _messages # TODO: Re-enable remap_messages(_messages)
+  messages = _messages  # TODO: Re-enable remap_messages(_messages)
   chat_template_args = {"conversation": [m if isinstance(m, Dict) else m.to_dict() for m in messages], "tokenize": False, "add_generation_prompt": True}
   if tools:
     chat_template_args["tools"] = tools
@@ -82,19 +83,17 @@ def build_prompt(tokenizer, _messages: List[Message], tools: Optional[List[Dict]
     return prompt
   except UnicodeEncodeError:
     # Handle Unicode encoding by ensuring everything is UTF-8
-    chat_template_args["conversation"] = [
-      {k: v.encode('utf-8').decode('utf-8') if isinstance(v, str) else v
-       for k, v in m.to_dict().items()}
-      for m in messages
-    ]
+    chat_template_args["conversation"] = [{k: v.encode('utf-8').decode('utf-8') if isinstance(v, str) else v for k, v in m.to_dict().items()} for m in messages]
     prompt = tokenizer.apply_chat_template(**chat_template_args)
     if DEBUG >= 3: print(f"!!! Prompt (UTF-8 encoded): {prompt}")
     return prompt
+
 
 def parse_message(data: dict):
   if "role" not in data or "content" not in data:
     raise ValueError(f"Invalid message: {data}. Must have 'role' and 'content'")
   return Message(data["role"], data["content"], data.get("tools"))
+
 
 class PromptSession:
   def __init__(self, request_id: str, timestamp: int, prompt: str):
@@ -117,7 +116,7 @@ class ChatGPTAPI:
     self.inference_engine_classname = inference_engine_classname
     self.response_timeout = response_timeout
     self.on_chat_completion_request = on_chat_completion_request
-    self.app = web.Application(client_max_size=100 * 1024 * 1024)  # 100MB to support image upload
+    self.app = web.Application(client_max_size=100*1024*1024)  # 100MB to support image upload
     self.prompts: PrefixDict[str, PromptSession] = PrefixDict()
     self.prev_token_lens: Dict[str, int] = {}
     self.stream_tasks: Dict[str, asyncio.Task] = {}
@@ -154,7 +153,7 @@ class ChatGPTAPI:
 
     # Add static routes
     if "__compiled__" not in globals():
-      self.static_dir = Path(__file__).parent.parent / "tinychat"
+      self.static_dir = Path(__file__).parent.parent/"tinychat"
       self.app.router.add_get("/", self.handle_root)
       self.app.router.add_static("/", self.static_dir, name="static")
 
@@ -190,22 +189,22 @@ class ChatGPTAPI:
     return middleware
 
   async def handle_root(self, request):
-    return web.FileResponse(self.static_dir / "index.html")
+    return web.FileResponse(self.static_dir/"index.html")
 
   async def handle_healthcheck(self, request):
     return web.json_response({"status": "ok"})
 
   async def handle_model_support(self, request):
     try:
-      response = web.StreamResponse(status=200, reason='OK',
-                                    headers={'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
-                                             'Connection': 'keep-alive'})
+      response = web.StreamResponse(status=200, reason='OK', headers={'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive'})
       await response.prepare(request)
       async for path, s in self.node.shard_downloader.get_shard_download_status(self.inference_engine_classname):
-        model_data = {s.shard.model_id: {"downloaded": s.downloaded_bytes == s.total_bytes,
-                                         "download_percentage": 100 if s.downloaded_bytes == s.total_bytes else 100 * float(
-                                           s.downloaded_bytes) / float(s.total_bytes), "total_size": s.total_bytes,
-                                         "total_downloaded": s.downloaded_bytes}}
+        model_data = {
+          s.shard.model_id: {
+            "downloaded": s.downloaded_bytes == s.total_bytes, "download_percentage": 100 if s.downloaded_bytes == s.total_bytes else 100*float(s.downloaded_bytes)/float(s.total_bytes),
+            "total_size": s.total_bytes, "total_downloaded": s.downloaded_bytes
+          }
+        }
         await response.write(f"data: {json.dumps(model_data)}\n\n".encode())
       await response.write(b"data: [DONE]\n\n")
       return response
@@ -216,8 +215,7 @@ class ChatGPTAPI:
       return web.json_response({"detail": f"Server error: {str(e)}"}, status=500)
 
   async def handle_get_models(self, request):
-    models_list = [{"id": model_name, "object": "model", "owned_by": "exo", "ready": True} for model_name, _ in
-                   model_cards.items()]
+    models_list = [{"id": model_name, "object": "model", "owned_by": "exo", "ready": True} for model_name, _ in model_cards.items()]
     return web.json_response({"object": "list", "data": models_list})
 
   async def handle_post_chat_token_encode(self, request):
@@ -226,8 +224,7 @@ class ChatGPTAPI:
     if model and model.startswith("gpt-"):  # Handle gpt- model requests
       model = self.default_model
     if not model or model not in model_cards:
-      if DEBUG >= 1: print(
-        f"Invalid model: {model}. Supported: {list(model_cards.keys())}. Defaulting to {self.default_model}")
+      if DEBUG >= 1: print(f"Invalid model: {model}. Supported: {list(model_cards.keys())}. Defaulting to {self.default_model}")
       model = self.default_model
     shard = build_base_shard(model, self.inference_engine_classname)
     messages = [parse_message(msg) for msg in data.get("messages", [])]
@@ -256,20 +253,16 @@ class ChatGPTAPI:
     if DEBUG >= 2: print(f"[ChatGPTAPI] Handling chat completions request from {request.remote}: {data}")
     stream = data.get("stream", False)
     chat_request = ChatCompletionRequest.from_chat_request_dict(data, self.default_model)
-    if chat_request.model and chat_request.model.startswith(
-      "gpt-"):  # to be compatible with ChatGPT tools, point all gpt- model requests to default model
+    if chat_request.model and chat_request.model.startswith("gpt-"):  # to be compatible with ChatGPT tools, point all gpt- model requests to default model
       chat_request.model = self.default_model
     if not chat_request.model or chat_request.model not in model_cards:
-      if DEBUG >= 1: print(
-        f"[ChatGPTAPI] Invalid model: {chat_request.model}. Supported: {list(model_cards.keys())}. Defaulting to {self.default_model}")
+      if DEBUG >= 1: print(f"[ChatGPTAPI] Invalid model: {chat_request.model}. Supported: {list(model_cards.keys())}. Defaulting to {self.default_model}")
       chat_request.model = self.default_model
     shard = build_base_shard(chat_request.model, self.inference_engine_classname)
     if not shard:
-      supported_models = [model for model, info in model_cards.items() if
-                          self.inference_engine_classname in info.get("repo", {})]
+      supported_models = [model for model, info in model_cards.items() if self.inference_engine_classname in info.get("repo", {})]
       return web.json_response(
-        {
-          "detail": f"Unsupported model: {chat_request.model} with inference engine {self.inference_engine_classname}. Supported models for this engine: {supported_models}"},
+        {"detail": f"Unsupported model: {chat_request.model} with inference engine {self.inference_engine_classname}. Supported models for this engine: {supported_models}"},
         status=400,
       )
 
@@ -300,12 +293,9 @@ class ChatGPTAPI:
     if DEBUG >= 2: print(f"[ChatGPTAPI] Processing prompt: {request_id=} {shard=} {prompt=}")
 
     try:
-      await asyncio.wait_for(asyncio.shield(asyncio.create_task(self.node.process_prompt(
-        shard,
-        prompt,
-        request_id=request_id,
-        generation_options=chat_request.to_generation_options()
-      ))), timeout=self.response_timeout)
+      await asyncio.wait_for(
+        asyncio.shield(asyncio.create_task(self.node.process_prompt(shard, prompt, request_id=request_id, generation_options=chat_request.to_generation_options()))), timeout=self.response_timeout
+      )
 
       if DEBUG >= 2:
         print(f"[ChatGPTAPI] Waiting for response to finish. timeout={self.response_timeout}s")
@@ -337,7 +327,6 @@ class ChatGPTAPI:
           if DEBUG >= 2: traceback.print_exc()
           return web.json_response({"detail": f"Error processing request: {str(e)}"}, status=500)
 
-
       else:
         # Non-streaming mode: get complete result
         tool_parser = chat_request.get_tool_parser()
@@ -364,31 +353,12 @@ class ChatGPTAPI:
             "created": int(time.time()),
             "model": chat_request.model,
             "system_fingerprint": f"exo_{VERSION}",
-            "choices": [{
-              "index": 0,
-              "logprobs": None,
-              "finish_reason": 'tool_calls',
-              "message": {
-                "tool_calls": tool_calls,
-              }
-            }],
+            "choices": [{"index": 0, "logprobs": None, "finish_reason": 'tool_calls', "message": {"tool_calls": tool_calls,}}],
           }
 
           return web.json_response(completion)
 
-        return web.json_response(
-          ChatCompletionRequest.generate_completion(
-            chat_request,
-            tokenizer,
-            prompt,
-            request_id,
-            result.tokens,
-            result.text,
-            False,
-            result.finish_reason,
-            "chat.completion"
-          )
-        )
+        return web.json_response(ChatCompletionRequest.generate_completion(chat_request, tokenizer, prompt, request_id, result.tokens, result.text, False, result.finish_reason, "chat.completion"))
 
     except asyncio.TimeoutError:
       return web.json_response({"detail": "Response generation timed out"}, status=408)
@@ -436,14 +406,7 @@ class ChatGPTAPI:
             "created": int(time.time()),
             "model": chat_request.model,
             "system_fingerprint": f"exo_{VERSION}",
-            "choices": [{
-              "index": 0,
-              "logprobs": None,
-              "finish_reason": 'tool_calls',
-              "delta": {
-                "tool_calls": tool_calls,
-              }
-            }],
+            "choices": [{"index": 0, "logprobs": None, "finish_reason": 'tool_calls', "delta": {"tool_calls": tool_calls,}}],
           }
 
           yield completion
@@ -495,8 +458,7 @@ class ChatGPTAPI:
     shard = build_base_shard(model, self.inference_engine_classname)
     if DEBUG >= 2: print(f"shard: {shard}")
     if not shard:
-      return web.json_response(
-        {"error": f"Unsupported model: {model} with inference engine {self.inference_engine_classname}"}, status=400)
+      return web.json_response({"error": f"Unsupported model: {model} with inference engine {self.inference_engine_classname}"}, status=400)
 
     request_id = str(uuid.uuid4())
     callback_id = f"chatgpt-api-wait-response-{request_id}"
@@ -506,9 +468,7 @@ class ChatGPTAPI:
         img = self.base64_decode(image_url)
       else:
         img = None
-      await asyncio.wait_for(asyncio.shield(asyncio.create_task(
-        self.node.process_prompt(shard, prompt, request_id=request_id, inference_state={"image": img}))),
-                             timeout=self.response_timeout)
+      await asyncio.wait_for(asyncio.shield(asyncio.create_task(self.node.process_prompt(shard, prompt, request_id=request_id, inference_state={"image": img}))), timeout=self.response_timeout)
 
       response = web.StreamResponse(status=200, reason='OK', headers={
         'Content-Type': 'application/octet-stream',
@@ -518,10 +478,10 @@ class ChatGPTAPI:
 
       def get_progress_bar(current_step, total_steps, bar_length=50):
         # Calculate the percentage of completion
-        percent = float(current_step) / total_steps
+        percent = float(current_step)/total_steps
         # Calculate the number of hashes to display
-        arrow = '-' * int(round(percent * bar_length) - 1) + '>'
-        spaces = ' ' * (bar_length - len(arrow))
+        arrow = '-'*int(round(percent*bar_length) - 1) + '>'
+        spaces = ' '*(bar_length - len(arrow))
 
         # Create the progress bar string
         progress_bar = f'Progress: [{arrow}{spaces}] {int(percent * 100)}% ({current_step}/{total_steps})'
@@ -529,15 +489,14 @@ class ChatGPTAPI:
 
       async def stream_image(_request_id: str, result, is_finished: bool):
         if isinstance(result, list):
-          await response.write(
-            json.dumps({'progress': get_progress_bar((result[0]), (result[1]))}).encode('utf-8') + b'\n')
+          await response.write(json.dumps({'progress': get_progress_bar((result[0]), (result[1]))}).encode('utf-8') + b'\n')
 
         elif isinstance(result, np.ndarray):
           try:
             im = Image.fromarray(np.array(result))
             # Save the image to a file
             image_filename = f"{_request_id}.png"
-            image_path = self.images_dir / image_filename
+            image_path = self.images_dir/image_filename
             im.save(image_path)
 
             # Get URL for the saved image
@@ -546,14 +505,11 @@ class ChatGPTAPI:
               base_url = f"{request.scheme}://{request.host}"
               full_image_url = base_url + str(image_url)
 
-              await response.write(
-                json.dumps({'images': [{'url': str(full_image_url), 'content_type': 'image/png'}]}).encode(
-                  'utf-8') + b'\n')
+              await response.write(json.dumps({'images': [{'url': str(full_image_url), 'content_type': 'image/png'}]}).encode('utf-8') + b'\n')
             except KeyError as e:
               if DEBUG >= 2: print(f"Error getting image URL: {e}")
               # Fallback to direct file path if URL generation fails
-              await response.write(
-                json.dumps({'images': [{'url': str(image_path), 'content_type': 'image/png'}]}).encode('utf-8') + b'\n')
+              await response.write(json.dumps({'images': [{'url': str(image_path), 'content_type': 'image/png'}]}).encode('utf-8') + b'\n')
 
             if is_finished:
               await response.write_eof()
@@ -570,7 +526,7 @@ class ChatGPTAPI:
         stream_task = asyncio.create_task(stream_image(_request_id, result, is_finished))
         return _request_id == request_id and is_finished
 
-      await callback.wait(on_result, timeout=self.response_timeout * 10)
+      await callback.wait(on_result, timeout=self.response_timeout*10)
 
       if stream_task:
         # Wait for the stream task to complete before returning
@@ -613,22 +569,20 @@ class ChatGPTAPI:
       device_name = data.get("device_name", "Local Device")
       prompt_text = data.get("prompt", "")
 
-      if DEBUG >= 2: print(
-        f"Creating animation with params: replacement_image={replacement_image_path}, device={device_name}, prompt={prompt_text}")
+      if DEBUG >= 2: print(f"Creating animation with params: replacement_image={replacement_image_path}, device={device_name}, prompt={prompt_text}")
 
       if not replacement_image_path:
         return web.json_response({"error": "replacement_image_path is required"}, status=400)
 
       # Create temp directory if it doesn't exist
-      tmp_dir = Path(tempfile.gettempdir()) / "exo_animations"
+      tmp_dir = Path(tempfile.gettempdir())/"exo_animations"
       tmp_dir.mkdir(parents=True, exist_ok=True)
 
       # Generate unique output filename in temp directory
       output_filename = f"animation_{uuid.uuid4()}.mp4"
-      output_path = str(tmp_dir / output_filename)
+      output_path = str(tmp_dir/output_filename)
 
-      if DEBUG >= 2: print(
-        f"Animation temp directory: {tmp_dir}, output file: {output_path}, directory exists: {tmp_dir.exists()}, directory permissions: {oct(tmp_dir.stat().st_mode)[-3:]}")
+      if DEBUG >= 2: print(f"Animation temp directory: {tmp_dir}, output file: {output_path}, directory exists: {tmp_dir.exists()}, directory permissions: {oct(tmp_dir.stat().st_mode)[-3:]}")
 
       # Create the animation
       create_animation_mp4(replacement_image_path, output_path, device_name, prompt_text)
@@ -644,12 +598,10 @@ class ChatGPTAPI:
       data = await request.json()
       model_name = data.get("model")
       if not model_name: return web.json_response({"error": "model parameter is required"}, status=400)
-      if model_name not in model_cards: return web.json_response(
-        {"error": f"Invalid model: {model_name}. Supported models: {list(model_cards.keys())}"}, status=400)
+      if model_name not in model_cards: return web.json_response({"error": f"Invalid model: {model_name}. Supported models: {list(model_cards.keys())}"}, status=400)
       shard = build_full_shard(model_name, self.inference_engine_classname)
       if not shard: return web.json_response({"error": f"Could not build shard for model {model_name}"}, status=400)
-      asyncio.create_task(
-        self.node.inference_engine.shard_downloader.ensure_shard(shard, self.inference_engine_classname))
+      asyncio.create_task(self.node.inference_engine.shard_downloader.ensure_shard(shard, self.inference_engine_classname))
 
       return web.json_response({"status": "success", "message": f"Download started for model: {model_name}"})
     except Exception as e:
@@ -679,11 +631,11 @@ class ChatGPTAPI:
       base64_string = base64_string.split(',')[1]
     image_data = base64.b64decode(base64_string)
     img = Image.open(BytesIO(image_data))
-    W, H = (dim - dim % 64 for dim in (img.width, img.height))
+    W, H = (dim - dim%64 for dim in (img.width, img.height))
     if W != img.width or H != img.height:
       if DEBUG >= 2: print(f"Warning: image shape is not divisible by 64, downsampling to {W}x{H}")
       img = img.resize((W, H), Image.NEAREST)  # use desired downsampling filter
     img = mx.array(np.array(img))
-    img = (img[:, :, :3].astype(mx.float32) / 255) * 2 - 1
+    img = (img[:, :, :3].astype(mx.float32)/255)*2 - 1
     img = img[None]
     return img

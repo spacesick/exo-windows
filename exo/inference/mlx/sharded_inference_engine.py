@@ -86,7 +86,7 @@ class MLXDynamicShardInferenceEngine(InferenceEngine):
 
     await self._eval_mlx(output_data)
 
-    output_data_mx = output_data # Because it stores results from MLX model(mx.array)
+    output_data_mx = output_data  # Because it stores results from MLX model(mx.array)
 
     def convert_output_to_numpy(tensor):
       # If the tensor is bfloat16, then convert to float32 as numpy doesn't support bfloat16.
@@ -95,10 +95,7 @@ class MLXDynamicShardInferenceEngine(InferenceEngine):
       else:
         return np.array(tensor, copy=False)
 
-    output_data_np = await asyncio.get_running_loop().run_in_executor(
-      self._mlx_thread,
-      lambda: convert_output_to_numpy(output_data_mx)
-    )
+    output_data_np = await asyncio.get_running_loop().run_in_executor(self._mlx_thread, lambda: convert_output_to_numpy(output_data_mx))
     return output_data_np, inference_state
 
   async def evaluate(self, request_id: str, shard: Shard, inputs, targets, lengths, loss: str = "length_masked_ce"):
@@ -152,7 +149,7 @@ class MLXDynamicShardInferenceEngine(InferenceEngine):
     if layers and 'input_layernorm' in layers[0]:
       first_layer_mx = layers[0]['input_layernorm']
       await self._eval_mlx(first_layer_mx)
-      
+
       def convert_gradient_to_numpy(grad_tensor):
         # If the tensor is bfloat16, then convert to float32 as numpy doesn't support bfloat16.
         if grad_tensor.dtype == mx.bfloat16:
@@ -160,11 +157,8 @@ class MLXDynamicShardInferenceEngine(InferenceEngine):
         else:
           return np.array(grad_tensor, copy=False)
 
-    first_layer_np = await asyncio.get_running_loop().run_in_executor(
-            self._mlx_thread, 
-            lambda: convert_gradient_to_numpy(first_layer_mx)
-        )      
-      
+    first_layer_np = await asyncio.get_running_loop().run_in_executor(self._mlx_thread, lambda: convert_gradient_to_numpy(first_layer_mx))
+
     return score, first_layer_np
 
   async def ensure_shard(self, shard: Shard):

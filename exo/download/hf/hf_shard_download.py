@@ -6,15 +6,13 @@ from exo.inference.shard import Shard
 from exo.download.shard_download import ShardDownloader
 from exo.download.download_progress import RepoProgressEvent
 from exo.download.hf.hf_helpers import (
-    download_repo_files, RepoProgressEvent, get_weight_map, 
-    get_allow_patterns, get_repo_root, fetch_file_list, 
-    get_local_snapshot_dir, get_file_download_percentage,
-    filter_repo_objects
+  download_repo_files, RepoProgressEvent, get_weight_map, get_allow_patterns, get_repo_root, fetch_file_list, get_local_snapshot_dir, get_file_download_percentage, filter_repo_objects
 )
 from exo.helpers import AsyncCallbackSystem, DEBUG
 from exo.models import model_cards, get_repo
 import aiohttp
 from aiofiles import os as aios
+
 
 class HFShardDownloader(ShardDownloader):
   def __init__(self, quick_check: bool = False, max_parallel_downloads: int = 4):
@@ -31,7 +29,7 @@ class HFShardDownloader(ShardDownloader):
     self.current_shard = shard
     self.current_repo_id = get_repo(shard.model_id, inference_engine_name)
     repo_name = get_repo(shard.model_id, inference_engine_name)
-    
+
     # First check if we already have this shard downloaded
     if shard in self.completed_downloads:
       return self.completed_downloads[shard]
@@ -56,7 +54,7 @@ class HFShardDownloader(ShardDownloader):
         visible_dirs = [d for d in snapshots_dir.iterdir() if not d.name.startswith('.')]
         if visible_dirs:
           most_recent_dir = max(visible_dirs, key=lambda x: x.stat().st_mtime)
-          
+
           # Verify that all required files are present
           try:
             weight_map = await get_weight_map(repo_name)
@@ -65,7 +63,7 @@ class HFShardDownloader(ShardDownloader):
               async with aiohttp.ClientSession() as session:
                 file_list = await fetch_file_list(session, repo_name, self.revision)
                 required_files = list(filter_repo_objects(file_list, allow_patterns=allow_patterns, key=lambda x: x["path"]))
-                
+
                 # Check if all required files exist and have the correct size
                 all_files_present = True
                 for file_info in required_files:
@@ -79,7 +77,7 @@ class HFShardDownloader(ShardDownloader):
                     if DEBUG >= 2: print(f"File size mismatch for {file_path}: expected {file_info['size']}, got {file_size}")
                     all_files_present = False
                     break
-                
+
                 if all_files_present:
                   self.completed_downloads[shard] = most_recent_dir
                   return most_recent_dir
@@ -160,35 +158,32 @@ class HFShardDownloader(ShardDownloader):
 
       async with aiohttp.ClientSession() as session:
         file_list = await fetch_file_list(session, self.current_repo_id, self.revision)
-        relevant_files = list(
-            filter_repo_objects(
-                file_list, allow_patterns=patterns, key=lambda x: x["path"]))
+        relevant_files = list(filter_repo_objects(file_list, allow_patterns=patterns, key=lambda x: x["path"]))
 
         for file in relevant_files:
           file_size = file["size"]
           total_bytes += file_size
 
           percentage = await get_file_download_percentage(
-              session,
-              self.current_repo_id,
-              self.revision,
-              file["path"],
-              snapshot_dir,
+            session,
+            self.current_repo_id,
+            self.revision,
+            file["path"],
+            snapshot_dir,
           )
           status[file["path"]] = percentage
-          downloaded_bytes += (file_size * (percentage / 100))
+          downloaded_bytes += (file_size*(percentage/100))
 
         # Add overall progress weighted by file size
         if total_bytes > 0:
-          status["overall"] = (downloaded_bytes / total_bytes) * 100
+          status["overall"] = (downloaded_bytes/total_bytes)*100
         else:
           status["overall"] = 0
-          
+
         # Add total size in bytes
         status["total_size"] = total_bytes
         if status["overall"] != 100:
           status["total_downloaded"] = downloaded_bytes
-        
 
         if DEBUG >= 2:
           print(f"Download calculation for {self.current_repo_id}:")

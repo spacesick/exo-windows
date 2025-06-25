@@ -8,6 +8,7 @@ from exo.helpers import DEBUG
 from exo.download.new_shard_download import ensure_downloads_dir
 from pathlib import Path
 
+
 class Tokenizer(Protocol):
   eos_token_id: int
   vocab_size: int

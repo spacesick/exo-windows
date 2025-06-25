@@ -233,6 +233,7 @@ async def get_downloaded_size(path: Path) -> int:
   if await aios.path.exists(partial_path): return (await aios.stat(partial_path)).st_size
   return 0
 
+
 async def download_progress_for_local_path(repo_id: str, shard: Shard, local_path: Path) -> RepoProgressEvent:
   # Scan local files for accurate progress reporting
   file_progress = {}
@@ -244,20 +245,11 @@ async def download_progress_for_local_path(repo_id: str, shard: Shard, local_pat
     for root, _, files in os.walk(local_path):
       for f in files:
         if f.endswith(('.safetensors', '.bin', '.pt', '.gguf', '.json')):
-          file_path = Path(root) / f
+          file_path = Path(root)/f
           size = (await aios.stat(file_path)).st_size
           rel_path = str(file_path.relative_to(local_path))
           file_progress[rel_path] = RepoFileProgressEvent(
-            repo_id=repo_id,
-            repo_revision="local",
-            file_path=rel_path,
-            downloaded=size,
-            downloaded_this_session=0,
-            total=size,
-            speed=0,
-            eta=timedelta(0),
-            status="complete",
-            start_time=time.time()
+            repo_id=repo_id, repo_revision="local", file_path=rel_path, downloaded=size, downloaded_this_session=0, total=size, speed=0, eta=timedelta(0), status="complete", start_time=time.time()
           )
           total_files += 1
           total_bytes += size
@@ -279,7 +271,14 @@ async def download_progress_for_local_path(repo_id: str, shard: Shard, local_pat
     status="complete"
   )
 
-async def download_shard(shard: Shard, inference_engine_classname: str, on_progress: AsyncCallbackSystem[str, Tuple[Shard, RepoProgressEvent]], max_parallel_downloads: int = 8, skip_download: bool = False) -> tuple[Path, RepoProgressEvent]:
+
+async def download_shard(
+  shard: Shard,
+  inference_engine_classname: str,
+  on_progress: AsyncCallbackSystem[str, Tuple[Shard, RepoProgressEvent]],
+  max_parallel_downloads: int = 8,
+  skip_download: bool = False
+) -> tuple[Path, RepoProgressEvent]:
   if DEBUG >= 2 and not skip_download: print(f"Downloading {shard.model_id=} for {inference_engine_classname}")
   repo_id = get_repo(shard.model_id, inference_engine_classname)
 

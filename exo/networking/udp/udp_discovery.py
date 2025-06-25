@@ -24,14 +24,14 @@ class ListenProtocol(asyncio.DatagramProtocol):
 
 
 async def get_broadcast_address(ip_addr: str) -> str:
-  try:    
+  try:
     # Get network interface info (netmask and broadcast)
     interface_info = await get_network_interface_info(ip_addr)
-    
+
     if interface_info:
       _, broadcast_address = interface_info
       return broadcast_address
-    
+
     # If we couldn't get interface info, fall back to the old method
     if DEBUG_DISCOVERY >= 2: print(f"Could not determine broadcast address for {ip_addr}, using fallback")
     ip_parts = ip_addr.split('.')
@@ -130,12 +130,9 @@ class UDPDiscovery(Discovery):
           except AttributeError:
             pass
           sock.bind((addr, 0))
-          
+
           broadcast_addr = await get_broadcast_address(addr)
-          transport, _ = await asyncio.get_event_loop().create_datagram_endpoint(
-            lambda: BroadcastProtocol(message, self.broadcast_port, addr, broadcast_addr),
-            sock=sock
-          )
+          transport, _ = await asyncio.get_event_loop().create_datagram_endpoint(lambda: BroadcastProtocol(message, self.broadcast_port, addr, broadcast_addr), sock=sock)
         except Exception as e:
           print(f"Error in broadcast presence ({addr} - {interface_name} - {interface_priority}): {e}")
         finally:

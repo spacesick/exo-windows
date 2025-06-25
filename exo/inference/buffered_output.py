@@ -31,8 +31,7 @@ class BufferedOutput:
     grammar_definition: Optional[str] = None,
   ):
     self.buffer = []
-    self.buffer_char_size = max(len(stop_sequence) for stop_sequence in stop_sequences) if len(
-      stop_sequences) > 0 else 0
+    self.buffer_char_size = max(len(stop_sequence) for stop_sequence in stop_sequences) if len(stop_sequences) > 0 else 0
     self.max_tokens = max_tokens
     self.eos_token_id = eos_token_id
     self.stop_sequences = stop_sequences

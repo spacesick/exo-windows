@@ -11,6 +11,7 @@ from exo.inference.generation_options import GenerationOptions
 
 from exo.api.response_formats import ResponseFormat, ResponseFormatAdapter
 
+
 class Message:
   def __init__(self, role: str, content: Union[str, List[Dict[str, Union[str, Dict[str, str]]]]], tools: Optional[List[Dict]] = None):
     self.role = role
@@ -23,9 +24,11 @@ class Message:
       data["tools"] = self.tools
     return data
 
+
 class ToolBehaviour(BaseModel):
   format: str
   parsed: bool = True
+
 
 class ToolDefinition(BaseModel):
   """
@@ -42,9 +45,19 @@ class ToolDefinition(BaseModel):
 
 
 class ChatCompletionRequest:
-  def __init__(self, model: str, messages: List[Message], temperature: float, tools: Optional[List[ToolDefinition]] = None,
-               max_completion_tokens: Optional[int] = None, stop: Optional[Union[str, List[str]]] = None, response_format: Optional[ResponseFormat] = None,
-               tool_choice: Optional[ToolChoice] = None, tool_behaviour: Optional[ToolBehaviour] = None, parallel_tool_calling: Optional[bool] = None):
+  def __init__(
+    self,
+    model: str,
+    messages: List[Message],
+    temperature: float,
+    tools: Optional[List[ToolDefinition]] = None,
+    max_completion_tokens: Optional[int] = None,
+    stop: Optional[Union[str, List[str]]] = None,
+    response_format: Optional[ResponseFormat] = None,
+    tool_choice: Optional[ToolChoice] = None,
+    tool_behaviour: Optional[ToolBehaviour] = None,
+    parallel_tool_calling: Optional[bool] = None
+  ):
     self.model = model
     self.messages = messages
     self.temperature = temperature
@@ -57,10 +70,11 @@ class ChatCompletionRequest:
     self.parallel_tool_calling = parallel_tool_calling
 
   def to_dict(self):
-    return {"model": self.model, "messages": [message.to_dict() for message in self.messages],
-            "temperature": self.temperature, "tools": self.tools, "max_completion_tokens": self.max_completion_tokens,
-            "stop": self.stop, "response_format": self.response_format.model_dump() if self.response_format else None, "tool_choice": self.tool_choice, "tool_behaviour": self.tool_behaviour.model_dump() if self.tool_behaviour else None,
-            "parallel_tool_calling": self.parallel_tool_calling}
+    return {
+      "model": self.model, "messages": [message.to_dict() for message in self.messages], "temperature": self.temperature, "tools": self.tools, "max_completion_tokens": self.max_completion_tokens,
+      "stop": self.stop, "response_format": self.response_format.model_dump() if self.response_format else None, "tool_choice": self.tool_choice,
+      "tool_behaviour": self.tool_behaviour.model_dump() if self.tool_behaviour else None, "parallel_tool_calling": self.parallel_tool_calling
+    }
 
   def enable_tool_parsing(self) -> bool:
     """
@@ -118,26 +132,26 @@ class ChatCompletionRequest:
     stream: bool,
     finish_reason: Union[Literal["length", "stop"], None],
     object_type: Literal["chat.completion", "text_completion"],
-    ) -> dict:
+  ) -> dict:
     completion = {
-        "id": f"chatcmpl-{request_id}",
-        "object": object_type,
-        "created": int(time.time()),
-        "model": self.model,
-        "system_fingerprint": f"exo_{VERSION}",
-        "choices": [{
+      "id": f"chatcmpl-{request_id}",
+      "object": object_type,
+      "created": int(time.time()),
+      "model": self.model,
+      "system_fingerprint": f"exo_{VERSION}",
+      "choices": [{
         "index": 0,
         "logprobs": None,
         "finish_reason": finish_reason,
-        }],
+      }],
     }
 
     if not stream:
-        completion["usage"] = {
+      completion["usage"] = {
         "prompt_tokens": len(tokenizer.encode(prompt)),
         "completion_tokens": len(tokens),
         "total_tokens": len(tokenizer.encode(prompt)) + len(tokens),
-        }
+      }
 
     choice = completion["choices"][0]
     if object_type.startswith("chat.completion"):
@@ -146,25 +160,25 @@ class ChatCompletionRequest:
       else:
         choice["message"] = {"role": "assistant", "content": decoded_tokens}
     elif object_type == "text_completion":
-        choice["text"] = decoded_tokens
+      choice["text"] = decoded_tokens
     else:
-        ValueError(f"Unsupported response type: {object_type}")
+      ValueError(f"Unsupported response type: {object_type}")
 
     return completion
 
   @staticmethod
   def from_chat_request_dict(data: dict, default_model: str):
     return ChatCompletionRequest(
-        data.get("model", default_model),
-        data["messages"],
-        data.get("temperature", 0.0),
-        [ToolDefinition.model_validate(tool) for tool in data["tools"]] if "tools" in data else None,
-        # The max_tokens field is deprecated, but some clients may still use it, fall back to that value if
-        # max_completion_tokens is not provided.
-        data.get("max_completion_tokens", data.get("max_tokens", None)),
-        data.get("stop", None),
-        response_format=ResponseFormatAdapter.validate_python(data.get("response_format")) if "response_format" in data else None,
-        tool_choice=ToolChoiceModel.validate_python(data.get("tool_choice")) if "tool_choice" in data else None,
-        tool_behaviour=ToolBehaviour.model_validate(data.get("tool_behaviour")) if "tool_behaviour" in data else None,
-        parallel_tool_calling=data.get("parallel_tool_calls", False),
+      data.get("model", default_model),
+      data["messages"],
+      data.get("temperature", 0.0),
+      [ToolDefinition.model_validate(tool) for tool in data["tools"]] if "tools" in data else None,
+      # The max_tokens field is deprecated, but some clients may still use it, fall back to that value if
+      # max_completion_tokens is not provided.
+      data.get("max_completion_tokens", data.get("max_tokens", None)),
+      data.get("stop", None),
+      response_format=ResponseFormatAdapter.validate_python(data.get("response_format")) if "response_format" in data else None,
+      tool_choice=ToolChoiceModel.validate_python(data.get("tool_choice")) if "tool_choice" in data else None,
+      tool_behaviour=ToolBehaviour.model_validate(data.get("tool_behaviour")) if "tool_behaviour" in data else None,
+      parallel_tool_calling=data.get("parallel_tool_calls", False),
     )

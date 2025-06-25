@@ -16,8 +16,7 @@ ToolChoice = Union[
   # required => model must use tools,
   # specific => model must use specific tools
   Literal["none", "auto", "required"],
-  SpecificToolChoice
-]
+  SpecificToolChoice]
 
 ToolChoiceModel = TypeAdapter(ToolChoice)
 

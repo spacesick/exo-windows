@@ -27,12 +27,10 @@ class InferenceResultManager:
   node: Node
   tokenizers: dict[str, Tokenizer]
   request_models: dict[str, str]
-
   """
   Manages inference results and provides an async iterator interface for consuming them.
   This handles buffering tokens and providing them as chunks to clients.
   """
-
   def __init__(self, node: Node):
     self.node = node
     self.token_queues: Dict[str, asyncio.Queue] = defaultdict(asyncio.Queue)
@@ -44,8 +42,7 @@ class InferenceResultManager:
     self.token_callback = node.on_token.register("inference-result-manager-token-handler")
     self.token_callback.on_next(self._token_handler_wrapper)
 
-  def _token_handler_wrapper(self, request_id: str, tokens: List[int], is_finished: bool,
-                             finish_reason: Optional[str] = None):
+  def _token_handler_wrapper(self, request_id: str, tokens: List[int], is_finished: bool, finish_reason: Optional[str] = None):
     """Wrapper that creates a task for the async handler"""
     asyncio.create_task(self.handle_tokens(request_id, tokens, is_finished, finish_reason))
 
@@ -54,7 +51,7 @@ class InferenceResultManager:
 
   def get_tokenizer(self, request_id: str) -> Tokenizer:
     return self.tokenizers[request_id]
-  
+
   def get_partial_tokens(self, request_id: str) -> List[int]:
     if request_id not in self.partial_tokens_map:
       self.partial_tokens_map[request_id] = []
@@ -64,8 +61,7 @@ class InferenceResultManager:
   def remove_partial_tokens(self, request_id: str) -> List[int]:
     del self.partial_tokens_map[request_id]
 
-  async def handle_tokens(self, request_id: str, tokens: List[int], is_finished: bool,
-                          finish_reason: Optional[str] = None):
+  async def handle_tokens(self, request_id: str, tokens: List[int], is_finished: bool, finish_reason: Optional[str] = None):
     """
     Handle incoming tokens for a specific request and queue them for consumption.
 
@@ -91,24 +87,14 @@ class InferenceResultManager:
 
     if partial_tokens is not None:
       unicode_partial_char = '�'
-      if (
-          all(char.isspace() or char == unicode_partial_char for char in content)
-          and
-          any(char == unicode_partial_char for char in content)
-      ):
+      if (all(char.isspace() or char == unicode_partial_char for char in content) and any(char == unicode_partial_char for char in content)):
         partial_tokens += tokens[:]
         result_tokens = []
         content = ""
       else:
         partial_tokens.clear()
 
-
-    await self.token_queues[request_id].put(InferenceResultChunk(
-      text=content,
-      tokens=result_tokens,
-      is_finished=is_finished,
-      finish_reason=finish_reason
-    ))
+    await self.token_queues[request_id].put(InferenceResultChunk(text=content, tokens=result_tokens, is_finished=is_finished, finish_reason=finish_reason))
 
     if is_finished:
       self.remove_partial_tokens(request_id)
@@ -126,10 +112,7 @@ class InferenceResultManager:
         InferenceResultChunk objects with text and completion status
     """
     while True:
-      chunk = await asyncio.wait_for(
-        self.token_queues[request_id].get(),
-        timeout=timeout
-      )
+      chunk = await asyncio.wait_for(self.token_queues[request_id].get(), timeout=timeout)
 
       # Yield the chunk
       yield chunk

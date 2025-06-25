@@ -16,6 +16,7 @@ from .losses import length_masked_ce_loss
 from collections import OrderedDict
 import asyncio
 from typing import Optional
+
 Tensor.no_grad = True
 # default settings
 TEMPERATURE = int(os.getenv("TEMPERATURE", 0.85))
@@ -87,6 +88,7 @@ class TinygradDynamicShardInferenceEngine(InferenceEngine):
       logits = x[:, -1, :]
       tensor_mask = Tensor(mask).flatten() if mask is not None else None
       return sample_logits(Tensor(logits).flatten(), temp, 0, 0.8, top_p, 0.0, mask=tensor_mask).realize().numpy().astype(int)
+
     return await asyncio.get_running_loop().run_in_executor(self.executor, sample_wrapper)
 
   async def encode(self, shard: Shard, prompt: str) -> np.ndarray:

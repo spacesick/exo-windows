@@ -72,7 +72,7 @@ def load_config(model_path: Path) -> dict:
     if model_index_path.exists():
       config = load_model_index(model_path, model_index_path)
       return config
-    
+
     raise FileNotFoundError()
   except FileNotFoundError:
     logging.error(f"Config file not found in {model_path}")

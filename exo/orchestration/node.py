@@ -126,17 +126,13 @@ class Node:
 
     if shard.model_id == 'stable-diffusion-2-1-base':
       # Stable Diffusion specific processing. This will mutate inference_state.
-      forward, intermediate_result, is_finished = await self.handle_stable_diffusion_inference(
-        result, inference_state
-      )
+      forward, intermediate_result, is_finished = await self.handle_stable_diffusion_inference(result, inference_state)
 
       # We don't do finish reason determination here for stable diffusion
       finish_reason = None
     else:
       # LLM specific processing
-      forward, intermediate_result, is_finished, finish_reason = await self.handle_llm_inference(
-        shard, result, request_id, generation_options
-      )
+      forward, intermediate_result, is_finished, finish_reason = await self.handle_llm_inference(shard, result, request_id, generation_options)
 
     # Yield the intermediate result before continuing further generation (for LLMs this will be the next token in the
     # output).
@@ -153,10 +149,7 @@ class Node:
       self.outstanding_requests.pop(request_id, None)
     else:
       self.outstanding_requests[request_id] = "waiting"
-      asyncio.create_task(self.forward_tensor(
-        shard, forward, request_id, self.get_partition_index(offset=1),
-        inference_state, generation_options
-      ))
+      asyncio.create_task(self.forward_tensor(shard, forward, request_id, self.get_partition_index(offset=1), inference_state, generation_options))
 
     if shard.model_id == 'stable-diffusion-2-1-base':
       return intermediate_result
@@ -184,11 +177,7 @@ class Node:
 
     buffered_output = self.buffered_token_output[request_id]
 
-    token = await self.inference_engine.sample(
-      result,
-      temp=self.default_sample_temperature,
-      mask=buffered_output.get_token_mask()
-    )
+    token = await self.inference_engine.sample(result, temp=self.default_sample_temperature, mask=buffered_output.get_token_mask())
 
     buffered_output.append(token.item())
 
@@ -254,7 +243,10 @@ class Node:
     )
     if DEBUG >= 2: print(f"[{request_id}] process prompt: {base_shard=} {shard=} {prompt=} {elapsed_time_ns=}")
 
-  async def _process_prompt(self, base_shard: Shard, prompt: str, request_id: Optional[str] = None,
+  async def _process_prompt(self,
+                            base_shard: Shard,
+                            prompt: str,
+                            request_id: Optional[str] = None,
                             inference_state: Optional[dict] = None,
                             generation_options: Optional[GenerationOptions] = None) -> Optional[np.ndarray]:
     if request_id is None:
@@ -649,6 +641,7 @@ class Node:
 
   async def broadcast_result(self, request_id: str, result: List[int], is_finished: bool, finish_reason: Optional[str] = None) -> None:
     if DEBUG >= 2: print(f"Broadcasting result: {request_id=} {result=} {is_finished=} {finish_reason=}")
+
     async def send_result_to_peer(peer):
       try:
         await asyncio.wait_for(peer.send_result(request_id, result, is_finished, finish_reason), timeout=15.0)

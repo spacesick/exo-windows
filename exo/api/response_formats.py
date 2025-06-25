@@ -41,9 +41,7 @@ class LarkGrammarResponseFormat(ResponseFormatBase):
   lark_grammar: str
 
   def to_grammar(self) -> Optional[str]:
-    return json.dumps({
-      "grammars": [{"lark_grammar": self.lark_grammar}]
-    })
+    return json.dumps({"grammars": [{"lark_grammar": self.lark_grammar}]})
 
 
 class RegexResponseFormat(ResponseFormatBase):
@@ -51,13 +49,9 @@ class RegexResponseFormat(ResponseFormatBase):
   regex: str
 
   def to_grammar(self) -> Optional[str]:
-    return json.dumps({
-      "grammars": [{"lark_grammar": f"start: /{self.regex}/"}]
-    })
+    return json.dumps({"grammars": [{"lark_grammar": f"start: /{self.regex}/"}]})
 
 
-ResponseFormat = (TextResponseFormat |
-                  JsonObjectResponseFormat | JsonSchemaResponseFormat |
-                  LarkGrammarResponseFormat | RegexResponseFormat)
+ResponseFormat = (TextResponseFormat | JsonObjectResponseFormat | JsonSchemaResponseFormat | LarkGrammarResponseFormat | RegexResponseFormat)
 
 ResponseFormatAdapter = TypeAdapter(ResponseFormat)

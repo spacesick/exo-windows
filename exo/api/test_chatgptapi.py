@@ -12,28 +12,18 @@ TEST_MODEL = "llama-3.2-1b"
 
 @pytest.fixture
 def client():
-  return OpenAI(
-    base_url=API_BASE_URL,
-    api_key="sk-1111"
-  )
+  return OpenAI(base_url=API_BASE_URL, api_key="sk-1111")
 
 
 @pytest.fixture
 def async_client():
-  return AsyncOpenAI(
-    base_url=API_BASE_URL,
-    api_key="sk-1111"
-  )
+  return AsyncOpenAI(base_url=API_BASE_URL, api_key="sk-1111")
 
 
 @pytest.mark.asyncio
 async def test_basic_chat_completion(client):
   """Test basic non-streaming chat completion"""
-  response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Say 'Hello world'"}],
-    temperature=0.0
-  )
+  response = client.chat.completions.create(model=TEST_MODEL, messages=[{"role": "user", "content": "Say 'Hello world'"}], temperature=0.0)
 
   assert response.id.startswith("chatcmpl-")
   assert response.object == "chat.completion"
@@ -46,12 +36,7 @@ async def test_basic_chat_completion(client):
 @pytest.mark.asyncio
 async def test_streaming_chat_completion(async_client):
   """Test streaming chat completion"""
-  stream = await async_client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Count to 5 separated by commas"}],
-    temperature=0.0,
-    stream=True
-  )
+  stream = await async_client.chat.completions.create(model=TEST_MODEL, messages=[{"role": "user", "content": "Count to 5 separated by commas"}], temperature=0.0, stream=True)
 
   responses = []
   async for chunk in stream:
@@ -68,12 +53,7 @@ async def test_streaming_chat_completion(async_client):
 async def test_max_completion_tokens(client):
   """Test max_completion_tokens and max_tokens fallback"""
   # Test max_completion_tokens
-  response1 = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Repeat 'foo bar' 10 times"}],
-    temperature=0.0,
-    max_completion_tokens=5
-  )
+  response1 = client.chat.completions.create(model=TEST_MODEL, messages=[{"role": "user", "content": "Repeat 'foo bar' 10 times"}], temperature=0.0, max_completion_tokens=5)
 
   # Test max_tokens fallback
   response2 = client.chat.completions.create(
@@ -91,13 +71,7 @@ async def test_max_completion_tokens(client):
 @pytest.mark.asyncio
 async def test_stop_sequences(client):
   """Test stop sequence handling"""
-  response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Complete this sequence directly: A B C"}],
-    temperature=0.0,
-    stop=["D"],
-    max_completion_tokens=20
-  )
+  response = client.chat.completions.create(model=TEST_MODEL, messages=[{"role": "user", "content": "Complete this sequence directly: A B C"}], temperature=0.0, stop=["D"], max_completion_tokens=20)
 
   content = response.choices[0].message.content
   assert "D" not in content
@@ -108,14 +82,7 @@ async def test_stop_sequences(client):
 async def test_raw_http_request():
   """Test API using raw HTTP request for basic completion"""
   async with aiohttp.ClientSession() as session:
-    async with session.post(
-      f"{API_BASE_URL}chat/completions",
-      json={
-        "model": TEST_MODEL,
-        "messages": [{"role": "user", "content": "2+2="}],
-        "temperature": 0.0
-      }
-    ) as resp:
+    async with session.post(f"{API_BASE_URL}chat/completions", json={"model": TEST_MODEL, "messages": [{"role": "user", "content": "2+2="}], "temperature": 0.0}) as resp:
       data = await resp.json()
       assert "4" in data["choices"][0]["message"]["content"]
 
@@ -126,13 +93,7 @@ async def test_raw_http_request_streaming():
   async with aiohttp.ClientSession() as session:
     async with session.post(
       f"{API_BASE_URL}chat/completions",
-      json={
-        "model": TEST_MODEL,
-        "messages": [{"role": "user",
-                      "content": "Count to 3 from 1, separate the numbers with commas and a space only."}],
-        "temperature": 0.0,
-        "stream": True
-      }
+      json={"model": TEST_MODEL, "messages": [{"role": "user", "content": "Count to 3 from 1, separate the numbers with commas and a space only."}], "temperature": 0.0, "stream": True}
     ) as resp:
       data_lines = []
       async for line in resp.content:
@@ -157,14 +118,7 @@ async def test_raw_http_request_streaming():
 async def test_raw_http_no_eot_id():
   """Test that responses don't include the <|eot_id|> special token. Note this token is model dependent."""
   async with aiohttp.ClientSession() as session:
-    async with session.post(
-      f"{API_BASE_URL}chat/completions",
-      json={
-        "model": TEST_MODEL,
-        "messages": [{"role": "user", "content": "Say exactly this: <|eot_id|>"}],
-        "temperature": 0.0
-      }
-    ) as resp:
+    async with session.post(f"{API_BASE_URL}chat/completions", json={"model": TEST_MODEL, "messages": [{"role": "user", "content": "Say exactly this: <|eot_id|>"}], "temperature": 0.0}) as resp:
       data = await resp.json()
       content = data["choices"][0]["message"]["content"]
       # Should return the literal text without the special token
@@ -219,10 +173,7 @@ async def test_stop_sequence_first_token_streaming(async_client):
 async def test_json_object_response_format(client):
   """Test JSON object response format"""
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Return a JSON object with a 'message' key saying 'hello'"}],
-    temperature=0.0,
-    response_format={"type": "json_object"}
+    model=TEST_MODEL, messages=[{"role": "user", "content": "Return a JSON object with a 'message' key saying 'hello'"}], temperature=0.0, response_format={"type": "json_object"}
   )
 
   content = response.choices[0].message.content
@@ -235,23 +186,13 @@ async def test_json_object_response_format(client):
 @pytest.mark.asyncio
 async def test_json_schema_response_format(client):
   """Test JSON schema response format"""
-  schema = {
-    "type": "object",
-    "properties": {
-      "number": {"type": "integer"},
-      "word": {"type": "string"}
-    },
-    "required": ["number"]
-  }
+  schema = {"type": "object", "properties": {"number": {"type": "integer"}, "word": {"type": "string"}}, "required": ["number"]}
 
   response = client.chat.completions.create(
     model=TEST_MODEL,
     messages=[{"role": "user", "content": "Return a JSON object with a random number between 1-10"}],
     temperature=0.0,
-    response_format=JsonSchemaResponseFormat(
-      type="json_schema",
-      json_schema=schema
-    ).model_dump()
+    response_format=JsonSchemaResponseFormat(type="json_schema", json_schema=schema).model_dump()
   )
 
   content = response.choices[0].message.content
@@ -268,14 +209,11 @@ async def test_lark_grammar_response_format(client):
     model=TEST_MODEL,
     messages=[{"role": "user", "content": "Answer only 'Yes' or 'No'"}],
     temperature=0.0,
-    response_format={
-      "type": "lark_grammar",
-      "lark_grammar": """
+    response_format={"type": "lark_grammar", "lark_grammar": """
                 start: "Yes" | "No"
                 %import common.WS
                 %ignore WS
-            """
-    }
+            """}
   )
 
   content = response.choices[0].message.content.strip()
@@ -287,13 +225,7 @@ async def test_lark_grammar_response_format(client):
 async def test_regex_response_format(client):
   """Test regex response format"""
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Generate a hexadecimal color code"}],
-    temperature=0.0,
-    response_format={
-      "type": "regex",
-      "regex": r"^#[0-9a-fA-F]{6}$"
-    }
+    model=TEST_MODEL, messages=[{"role": "user", "content": "Generate a hexadecimal color code"}], temperature=0.0, response_format={"type": "regex", "regex": r"^#[0-9a-fA-F]{6}$"}
   )
 
   content = response.choices[0].message.content.strip()
@@ -307,13 +239,7 @@ async def test_raw_http_json_format():
   async with aiohttp.ClientSession() as session:
     async with session.post(
       f"{API_BASE_URL}chat/completions",
-      json={
-        "model": TEST_MODEL,
-        "messages": [{"role": "user",
-                      "content": "Return a JSON object with key 'status' and value 'ok'"}],
-        "temperature": 0.0,
-        "response_format": {"type": "json_object"}
-      }
+      json={"model": TEST_MODEL, "messages": [{"role": "user", "content": "Return a JSON object with key 'status' and value 'ok'"}], "temperature": 0.0, "response_format": {"type": "json_object"}}
     ) as resp:
       data = await resp.json()
       content = data["choices"][0]["message"]["content"]
@@ -325,40 +251,23 @@ async def test_raw_http_json_format():
 # OpenAI recommends using the 'tools' parameter instead of the deprecated 'functions' parameter
 # The 'tools' interface provides more flexibility and better supports the latest OpenAI features
 
+
 @pytest.mark.asyncio
 async def test_basic_tool_calling(client):
   """Test basic tool calling with a single function"""
-  tools = [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state, e.g. San Francisco, CA"
-            },
-            "unit": {
-              "type": "string",
-              "enum": ["celsius", "fahrenheit"],
-              "description": "The temperature unit to use"
-            }
-          },
-          "required": ["location"]
-        }
+  tools = [{
+    "type": "function", "function": {
+      "name": "get_weather", "description": "Get the current weather in a given location", "parameters": {
+        "type": "object", "properties": {
+          "location": {"type": "string", "description": "The city and state, e.g. San Francisco, CA"},
+          "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "description": "The temperature unit to use"}
+        }, "required": ["location"]
       }
     }
-  ]
+  }]
 
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "What's the weather like in San Francisco?"}],
-    tools=tools,
-    temperature=0.0,
-    max_completion_tokens=200
+    model=TEST_MODEL, messages=[{"role": "user", "content": "What's the weather like in San Francisco?"}], tools=tools, temperature=0.0, max_completion_tokens=200
   )
 
   assert response.choices[0].finish_reason == "tool_calls"
@@ -374,38 +283,20 @@ async def test_basic_tool_calling(client):
 @pytest.mark.asyncio
 async def test_function_calling_with_tool_choice(client):
   """Test function calling with tool_choice parameter"""
-  tools = [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state, e.g. San Francisco, CA"
-            },
-            "unit": {
-              "type": "string",
-              "enum": ["celsius", "fahrenheit"],
-              "description": "The temperature unit to use"
-            }
-          },
-          "required": ["location"]
-        }
+  tools = [{
+    "type": "function", "function": {
+      "name": "get_weather", "description": "Get the current weather in a given location", "parameters": {
+        "type": "object", "properties": {
+          "location": {"type": "string", "description": "The city and state, e.g. San Francisco, CA"},
+          "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "description": "The temperature unit to use"}
+        }, "required": ["location"]
       }
     }
-  ]
+  }]
 
   # Test forcing the model to call the function
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "What's the weather like in Tokyo?"}],
-    tools=tools,
-    tool_choice={"type": "function", "function": {"name": "get_weather"}},
-    temperature=0.0
+    model=TEST_MODEL, messages=[{"role": "user", "content": "What's the weather like in Tokyo?"}], tools=tools, tool_choice={"type": "function", "function": {"name": "get_weather"}}, temperature=0.0
   )
 
   assert response.choices[0].finish_reason == "tool_calls"
@@ -419,16 +310,16 @@ async def test_function_calling_with_tool_choice(client):
   # Test allowing the model to choose whether to call the function
   response = client.chat.completions.create(
     model=TEST_MODEL,
-    messages=[
-      {"role": "system", "content": """You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you may need to make one or more function/tool calls to achieve the purpose.
+    messages=[{
+      "role": "system", "content":
+        """You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you may need to make one or more function/tool calls to achieve the purpose.
       You should only invoke the function(s) which will assist you in fulfilling the user's request, if their request does not require any function call, you should reply to them directly as a helpful assistant.
       DO NOT USE FUNCTIONS WHEN THEY WILL NOT HELP YOU ANSWER THE USER'S QUESTION.
       You MUST NOT make any assumptions about what tools you have access to or set of functions you can generate.
       You SHOULD NOT make any function calls that are not provided in the list of functions.
       You SHOULD NOT make any function calls that are not needed to answer the question.
-      You should only return the function call in tools call sections."""},
-      {"role": "user", "content": "Hello, how are you?"}
-    ],  # Unrelated to weather
+      You should only return the function call in tools call sections."""
+    }, {"role": "user", "content": "Hello, how are you?"}],  # Unrelated to weather
     tools=tools,
     tool_choice="auto",
     temperature=0.0
@@ -442,54 +333,21 @@ async def test_function_calling_with_tool_choice(client):
 @pytest.mark.asyncio
 async def test_multiple_function_calls(client):
   """Test with multiple function definitions"""
-  tools = [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state, e.g. San Francisco, CA"
-            }
-          },
-          "required": ["location"]
-        }
-      }
-    },
-    {
-      "type": "function",
-      "function": {
-        "name": "get_restaurant",
-        "description": "Find a restaurant in a specific location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state"
-            },
-            "cuisine": {
-              "type": "string",
-              "description": "Type of food, e.g. Italian, Chinese"
-            }
-          },
-          "required": ["location", "cuisine"]
-        }
+  tools = [{
+    "type": "function", "function": {
+      "name": "get_weather", "description": "Get the current weather in a given location",
+      "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The city and state, e.g. San Francisco, CA"}}, "required": ["location"]}
+    }
+  }, {
+    "type": "function", "function": {
+      "name": "get_restaurant", "description": "Find a restaurant in a specific location", "parameters": {
+        "type": "object", "properties": {"location": {"type": "string", "description": "The city and state"}, "cuisine": {"type": "string", "description": "Type of food, e.g. Italian, Chinese"}},
+        "required": ["location", "cuisine"]
       }
     }
-  ]
+  }]
 
-  response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "Find me an Italian restaurant in New York"}],
-    tools=tools,
-    tool_choice="required",
-    temperature=0.0
-  )
+  response = client.chat.completions.create(model=TEST_MODEL, messages=[{"role": "user", "content": "Find me an Italian restaurant in New York"}], tools=tools, tool_choice="required", temperature=0.0)
 
   print(response)
   assert response.choices[0].finish_reason == "tool_calls"
@@ -504,33 +362,14 @@ async def test_multiple_function_calls(client):
 @pytest.mark.asyncio
 async def test_streaming_function_calls(async_client):
   """Test streaming with function calls"""
-  tools = [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city and state, e.g. San Francisco, CA"
-            }
-          },
-          "required": ["location"]
-        }
-      }
+  tools = [{
+    "type": "function", "function": {
+      "name": "get_weather", "description": "Get the current weather in a given location",
+      "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The city and state, e.g. San Francisco, CA"}}, "required": ["location"]}
     }
-  ]
+  }]
 
-  stream = await async_client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "What's the weather like in Chicago?"}],
-    tools=tools,
-    stream=True,
-    temperature=0.0
-  )
+  stream = await async_client.chat.completions.create(model=TEST_MODEL, messages=[{"role": "user", "content": "What's the weather like in Chicago?"}], tools=tools, stream=True, temperature=0.0)
 
   function_name = None
   function_args = {}
@@ -572,32 +411,14 @@ async def test_raw_http_function_calling():
     async with session.post(
       f"{API_BASE_URL}chat/completions",
       json={
-        "model": TEST_MODEL,
-        "messages": [{"role": "user", "content": "What's the population of Paris?"}],
-        "temperature": 0.0,
-        "tools": [
-          {
-            "type": "function",
-            "function": {
-              "name": "get_city_data",
-              "description": "Get population data for a city",
-              "parameters": {
-                "type": "object",
-                "properties": {
-                  "city": {
-                    "type": "string",
-                    "description": "The name of the city"
-                  },
-                  "country": {
-                    "type": "string",
-                    "description": "The country the city is in"
-                  }
-                },
-                "required": ["city"]
-              }
+        "model": TEST_MODEL, "messages": [{"role": "user", "content": "What's the population of Paris?"}], "temperature": 0.0, "tools": [{
+          "type": "function", "function": {
+            "name": "get_city_data", "description": "Get population data for a city", "parameters": {
+              "type": "object", "properties": {"city": {"type": "string", "description": "The name of the city"}, "country": {"type": "string", "description": "The country the city is in"}},
+              "required": ["city"]
             }
           }
-        ]
+        }]
       }
     ) as resp:
       data = await resp.json()
@@ -621,29 +442,13 @@ async def test_raw_http_tools_with_tool_choice():
         "model": TEST_MODEL,
         "messages": [{"role": "user", "content": "Hello!"}],  # Unrelated to the tool
         "temperature": 0.0,
-        "tools": [
-          {
-            "type": "function",
-            "function": {
-              "name": "get_current_time",
-              "description": "Get the current time in a specific timezone",
-              "parameters": {
-                "type": "object",
-                "properties": {
-                  "timezone": {
-                    "type": "string",
-                    "description": "The timezone to get the current time for"
-                  }
-                },
-                "required": ["timezone"]
-              }
-            }
+        "tools": [{
+          "type": "function", "function": {
+            "name": "get_current_time", "description": "Get the current time in a specific timezone",
+            "parameters": {"type": "object", "properties": {"timezone": {"type": "string", "description": "The timezone to get the current time for"}}, "required": ["timezone"]}
           }
-        ],
-        "tool_choice": {
-          "type": "function",
-          "function": {"name": "get_current_time"}
-        }
+        }],
+        "tool_choice": {"type": "function", "function": {"name": "get_current_time"}}
       }
     ) as resp:
       data = await resp.json()
@@ -663,48 +468,23 @@ async def test_multiple_tools_one_call(client):
   tools = [
     # Traditional function tool
     {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city name"
-            }
-          },
-          "required": ["location"]
-        }
+      "type": "function", "function": {
+        "name": "get_weather", "description": "Get the current weather in a given location",
+        "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The city name"}}, "required": ["location"]}
       }
     },
     # This demonstrates the extensibility of the tools interface
     # Future OpenAI APIs might support more tool types beyond functions
     {
-      "type": "function",
-      "function": {
-        "name": "search_web",
-        "description": "Search the web for information",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "The search query"
-            }
-          },
-          "required": ["query"]
-        }
+      "type": "function", "function": {
+        "name": "search_web", "description": "Search the web for information",
+        "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query"}}, "required": ["query"]}
       }
     }
   ]
 
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "How's the weather in Berlin and what are some tourist attractions there?"}],
-    tools=tools,
-    temperature=0.0
+    model=TEST_MODEL, messages=[{"role": "user", "content": "How's the weather in Berlin and what are some tourist attractions there?"}], tools=tools, temperature=0.0
   )
 
   assert response.choices[0].finish_reason == "tool_calls"
@@ -727,74 +507,25 @@ async def test_multiple_tools_one_call(client):
 @pytest.mark.asyncio
 async def test_complex_tool_schema(client):
   """Test tool calling with a complex nested parameter schema"""
-  tools = [
-    {
-      "type": "function",
-      "function": {
-        "name": "book_flight",
-        "description": "Book a flight ticket",
-        "strict": True,
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "trip_type": {
-              "type": "string",
-              "enum": ["one_way", "round_trip"],
-              "description": "Type of trip"
-            },
-            "departure": {
-              "type": "object",
-              "properties": {
-                "airport": {
-                  "type": "string",
-                  "description": "Departure airport code"
-                },
-                "date": {
-                  "type": "string",
-                  "format": "date",
-                  "description": "Departure date in YYYY-MM-DD format"
-                }
-              },
-              "required": ["airport", "date"]
-            },
-            "arrival": {
-              "type": "object",
-              "properties": {
-                "airport": {
-                  "type": "string",
-                  "description": "Arrival airport code"
-                }
-              },
-              "required": ["airport"]
-            },
-            "return_date": {
-              "type": "string",
-              "format": "date",
-              "description": "Return date in YYYY-MM-DD format (for round trips)"
-            },
-            "passengers": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Number of passengers"
-            },
-            "seat_class": {
-              "type": "string",
-              "enum": ["economy", "premium_economy", "business", "first"],
-              "description": "Seat class preference"
-            }
-          },
-          "required": ["trip_type", "departure", "arrival", "passengers"]
-        }
+  tools = [{
+    "type": "function", "function": {
+      "name": "book_flight", "description": "Book a flight ticket", "strict": True, "parameters": {
+        "type": "object", "properties": {
+          "trip_type": {"type": "string", "enum": ["one_way", "round_trip"], "description": "Type of trip"}, "departure": {
+            "type": "object",
+            "properties": {"airport": {"type": "string", "description": "Departure airport code"}, "date": {"type": "string", "format": "date",
+                                                                                                            "description": "Departure date in YYYY-MM-DD format"}}, "required": ["airport", "date"]
+          }, "arrival": {"type": "object", "properties": {"airport": {"type": "string", "description": "Arrival airport code"}},
+                         "required": ["airport"]}, "return_date": {"type": "string", "format": "date", "description": "Return date in YYYY-MM-DD format (for round trips)"},
+          "passengers": {"type": "integer", "minimum": 1,
+                         "description": "Number of passengers"}, "seat_class": {"type": "string", "enum": ["economy", "premium_economy", "business", "first"], "description": "Seat class preference"}
+        }, "required": ["trip_type", "departure", "arrival", "passengers"]
       }
     }
-  ]
+  }]
 
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user",
-               "content": "I need a flight from JFK to LAX on December 15, 2023 for 2 people in business class"}],
-    tools=tools,
-    temperature=0.0
+    model=TEST_MODEL, messages=[{"role": "user", "content": "I need a flight from JFK to LAX on December 15, 2023 for 2 people in business class"}], tools=tools, temperature=0.0
   )
 
   assert response.choices[0].finish_reason == "tool_calls"
@@ -817,29 +548,12 @@ async def test_raw_http_streaming_function_calling():
     async with session.post(
       f"{API_BASE_URL}chat/completions",
       json={
-        "model": TEST_MODEL,
-        "messages": [{"role": "user", "content": "What's the weather like in Seattle?"}],
-        "temperature": 0.0,
-        "tools": [
-          {
-            "type": "function",
-            "function": {
-              "name": "get_weather",
-              "description": "Get the current weather in a given location",
-              "parameters": {
-                "type": "object",
-                "properties": {
-                  "location": {
-                    "type": "string",
-                    "description": "The city name"
-                  }
-                },
-                "required": ["location"]
-              }
-            }
+        "model": TEST_MODEL, "messages": [{"role": "user", "content": "What's the weather like in Seattle?"}], "temperature": 0.0, "tools": [{
+          "type": "function", "function": {
+            "name": "get_weather", "description": "Get the current weather in a given location",
+            "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The city name"}}, "required": ["location"]}
           }
-        ],
-        "stream": True
+        }], "stream": True
       }
     ) as resp:
       data_lines = []
@@ -889,29 +603,13 @@ async def test_raw_http_tools_with_explicit_choice():
         "model": TEST_MODEL,
         "messages": [{"role": "user", "content": "Hello!"}],  # Unrelated to the tool
         "temperature": 0.0,
-        "tools": [
-          {
-            "type": "function",
-            "function": {
-              "name": "get_current_time",
-              "description": "Get the current time in a specific timezone",
-              "parameters": {
-                "type": "object",
-                "properties": {
-                  "timezone": {
-                    "type": "string",
-                    "description": "The timezone to get the current time for"
-                  }
-                },
-                "required": ["timezone"]
-              }
-            }
+        "tools": [{
+          "type": "function", "function": {
+            "name": "get_current_time", "description": "Get the current time in a specific timezone",
+            "parameters": {"type": "object", "properties": {"timezone": {"type": "string", "description": "The timezone to get the current time for"}}, "required": ["timezone"]}
           }
-        ],
-        "tool_choice": {
-          "type": "function",
-          "function": {"name": "get_current_time"}
-        }
+        }],
+        "tool_choice": {"type": "function", "function": {"name": "get_current_time"}}
       }
     ) as resp:
       data = await resp.json()
@@ -931,48 +629,23 @@ async def test_diverse_tool_types(client):
   tools = [
     # Traditional function tool
     {
-      "type": "function",
-      "function": {
-        "name": "get_weather",
-        "description": "Get the current weather in a given location",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "location": {
-              "type": "string",
-              "description": "The city name"
-            }
-          },
-          "required": ["location"]
-        }
+      "type": "function", "function": {
+        "name": "get_weather", "description": "Get the current weather in a given location",
+        "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The city name"}}, "required": ["location"]}
       }
     },
     # This demonstrates the extensibility of the tools interface
     # Future OpenAI APIs might support more tool types beyond functions
     {
-      "type": "function",
-      "function": {
-        "name": "search_web",
-        "description": "Search the web for information",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "The search query"
-            }
-          },
-          "required": ["query"]
-        }
+      "type": "function", "function": {
+        "name": "search_web", "description": "Search the web for information",
+        "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "The search query"}}, "required": ["query"]}
       }
     }
   ]
 
   response = client.chat.completions.create(
-    model=TEST_MODEL,
-    messages=[{"role": "user", "content": "How's the weather in Berlin and what are some tourist attractions there?"}],
-    tools=tools,
-    temperature=0.0
+    model=TEST_MODEL, messages=[{"role": "user", "content": "How's the weather in Berlin and what are some tourist attractions there?"}], tools=tools, temperature=0.0
   )
 
   assert response.choices[0].finish_reason == "tool_calls"
@@ -995,43 +668,26 @@ async def test_diverse_tool_types(client):
 @pytest.mark.asyncio
 async def test_parallel_tool_calls_sdk(client):
   """Test parallel tool calling using OpenAI SDK with watt format"""
-  tools = [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_stock_price",
-        "description": "Get current stock price for a company",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "ticker": {"type": "string", "description": "Stock ticker symbol"}
-          },
-          "required": ["ticker"]
-        }
-      }
-    },
-    {
-      "type": "function",
-      "function": {
-        "name": "get_news_headlines",
-        "description": "Get recent news headlines for a company",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "company": {"type": "string", "description": "Company name"},
-            "limit": {"type": "integer", "description": "Number of headlines to return"}
-          },
-          "required": ["company"]
-        }
+  tools = [{
+    "type": "function", "function": {
+      "name": "get_stock_price", "description": "Get current stock price for a company",
+      "parameters": {"type": "object", "properties": {"ticker": {"type": "string", "description": "Stock ticker symbol"}}, "required": ["ticker"]}
+    }
+  }, {
+    "type": "function", "function": {
+      "name": "get_news_headlines", "description": "Get recent news headlines for a company", "parameters": {
+        "type": "object", "properties": {"company": {"type": "string", "description": "Company name"}, "limit": {"type": "integer", "description": "Number of headlines to return"}},
+        "required": ["company"]
       }
     }
-  ]
+  }]
 
   response = client.chat.completions.create(
     # model="watt-tool-ct",
     model=TEST_MODEL,
-    messages=[
-      {"role": "system", "content": f"""You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you may need to make one or more function/tool calls to achieve the purpose.
+    messages=[{
+      "role": "system", "content":
+        f"""You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you may need to make one or more function/tool calls to achieve the purpose.
 You should only invoke the function(s) which will assist you in fulfilling the user's request, if their request does not require any function call, you should return the answer directly.
 You MUST NOT make any assumptions about what tools you have access to or set of functions you can generate.
 You SHOULD NOT make any function calls that are not provided in the list of functions.
@@ -1042,9 +698,8 @@ If you decide to invoke any of the function(s), you MUST put it in the format of
 You SHOULD NOT include any other text in the response.
 Here is a list of functions in JSON format that you can invoke.
 {json.dumps(tools)}
-"""},
-      {"role": "user", "content": "What's the current stock price and recent news for Microsoft?"}
-    ],
+"""
+    }, {"role": "user", "content": "What's the current stock price and recent news for Microsoft?"}],
     parallel_tool_calls=True,
     tool_choice="required",
     tools=tools,
@@ -1078,41 +733,17 @@ async def test_parallel_tool_calls_raw_http():
       f"{API_BASE_URL}chat/completions",
       json={
         "model": TEST_MODEL,
-        "messages": [{
-          "role": "user",
-          "content": "Get weather in Paris and find flights from CDG to JFK"
-        }],
-        "tools": [
-          {
-            "type": "function",
-            "function": {
-              "name": "get_weather",
-              "description": "Get current weather for a location",
-              "parameters": {
-                "type": "object",
-                "properties": {
-                  "location": {"type": "string"}
-                },
-                "required": ["location"]
-              }
-            }
-          },
-          {
-            "type": "function",
-            "function": {
-              "name": "search_flights",
-              "description": "Search for available flights",
-              "parameters": {
-                "type": "object",
-                "properties": {
-                  "origin": {"type": "string"},
-                  "destination": {"type": "string"}
-                },
-                "required": ["origin", "destination"]
-              }
-            }
+        "messages": [{"role": "user", "content": "Get weather in Paris and find flights from CDG to JFK"}],
+        "tools": [{
+          "type": "function", "function": {
+            "name": "get_weather", "description": "Get current weather for a location", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
           }
-        ],
+        }, {
+          "type": "function", "function": {
+            "name": "search_flights", "description": "Search for available flights",
+            "parameters": {"type": "object", "properties": {"origin": {"type": "string"}, "destination": {"type": "string"}}, "required": ["origin", "destination"]}
+          }
+        }],
         "tool_choice": "required",
         "tool_behaviour": {"format": "watt"},  # Required parameter
         "temperature": 0.0,
